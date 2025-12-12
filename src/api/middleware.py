@@ -2,17 +2,29 @@
 Middleware for Personal AI Assistant API.
 
 Provides rate limiting to prevent abuse and manage Claude API costs.
+Also handles service exception conversion to API responses.
 Uses in-memory storage (good enough for single-user MVP).
 """
 
+import logging
 import time
 from collections import defaultdict
 from typing import Callable, Dict
 
-from fastapi import Request, Response
+from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .responses import RateLimitError
+from ..services.exceptions import (
+    ServiceError,
+    NotFoundError,
+    UnauthorizedError,
+    InvalidDataError,
+    DatabaseError
+)
+from .responses import RateLimitError, APIResponse
+
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
@@ -100,3 +112,61 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["RateLimit-Reset"] = str(int(time.time()) + 60)
         
         return response
+
+
+async def service_exception_handler(request: Request, exc: ServiceError) -> Response:
+    """
+    Convert service layer exceptions to API responses.
+    
+    Provides consistent error formatting and appropriate HTTP status codes
+    for all service-layer exceptions.
+    
+    Args:
+        request: FastAPI request object
+        exc: Service exception to convert
+        
+    Returns:
+        JSONResponse with appropriate status code and error details
+    """
+    if isinstance(exc, NotFoundError):
+        logger.warning(f"NotFoundError: {exc}")
+        return APIResponse.error(
+            code=f"{exc.resource_type.upper()}_NOT_FOUND",
+            message=str(exc),
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    
+    elif isinstance(exc, UnauthorizedError):
+        logger.warning(f"UnauthorizedError: {exc}")
+        return APIResponse.error(
+            code="FORBIDDEN",
+            message=str(exc),
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+    
+    elif isinstance(exc, InvalidDataError):
+        logger.warning(f"InvalidDataError: {exc}")
+        return APIResponse.error(
+            code="INVALID_DATA",
+            message=str(exc),
+            details=exc.details,
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    elif isinstance(exc, DatabaseError):
+        logger.error(f"DatabaseError: {exc}")
+        # Don't expose internal database details to client
+        return APIResponse.error(
+            code="DATABASE_ERROR",
+            message="Internal server error (database operation failed)",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    else:
+        # Catch-all for other ServiceError subclasses
+        logger.error(f"ServiceError: {exc}")
+        return APIResponse.error(
+            code="SERVICE_ERROR",
+            message="Internal server error",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

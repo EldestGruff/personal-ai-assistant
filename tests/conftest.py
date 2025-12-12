@@ -9,6 +9,9 @@ import os
 from typing import Generator
 from uuid import uuid4
 
+# Set dummy API key for tests before importing app
+os.environ["API_KEY"] = "test-api-key-12345678-1234-1234-1234-123456789012"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
@@ -117,10 +120,13 @@ def db_session(test_session_factory) -> Generator[Session, None, None]:
 @pytest.fixture(scope="function")
 def api_client(db_session) -> TestClient:
     """
-    Provide a FastAPI TestClient with test database.
+    Provide a FastAPI TestClient with test database and bypassed auth.
     
     Overrides the get_db dependency to use the test database session
-    instead of the production database.
+    instead of the production database. Also bypasses API key authentication
+    for all test requests.
+    
+    Automatically creates the test user that matches get_current_user_id().
     
     Args:
         db_session: Test database session
@@ -133,18 +139,87 @@ def api_client(db_session) -> TestClient:
         ...     response = api_client.get("/api/v1/health")
         ...     assert response.status_code == 200
     """
+    from src.api.auth import verify_api_key, get_current_user_id
+    
+    # Create test user with the ID that get_current_user_id() returns
+    test_user = UserDB(
+        id=get_current_user_id(),
+        name="Test User",
+        email="test@example.com",
+        preferences={
+            "timezone": "America/New_York",
+            "max_thoughts_goal": 20
+        },
+        is_active=True,
+        created_at=utc_now(),
+        updated_at=utc_now()
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    
     def override_get_db():
         try:
             yield db_session
         finally:
             pass  # Session cleanup handled by db_session fixture
     
+    async def override_verify_api_key():
+        """Bypass authentication for tests."""
+        return "test-api-key"
+    
+    # Override both database and authentication
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
+    
+    with TestClient(app) as client:
+        yield client
+    
+    # Clean up dependency overrides
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def api_client_real_auth(db_session) -> TestClient:
+    """
+    Provide a FastAPI TestClient with test database but REAL authentication.
+    
+    Use this fixture to test authentication behavior (e.g., 401 without auth).
+    Only overrides get_db, NOT verify_api_key.
+    
+    Args:
+        db_session: Test database session
+        
+    Returns:
+        TestClient: FastAPI test client that requires real authentication
+    """
+    from src.api.auth import get_current_user_id
+    
+    # Create test user
+    test_user = UserDB(
+        id=get_current_user_id(),
+        name="Test User",
+        email="test_real_auth@example.com",
+        preferences={"timezone": "America/New_York"},
+        is_active=True,
+        created_at=utc_now(),
+        updated_at=utc_now()
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+    
+    # Only override database, NOT authentication
     app.dependency_overrides[get_db] = override_get_db
     
     with TestClient(app) as client:
         yield client
     
-    # Clean up dependency override
     app.dependency_overrides.clear()
 
 
@@ -215,11 +290,14 @@ def sample_user(db_session) -> UserDB:
     """
     Create and persist a sample user in the test database.
     
+    CRITICAL: This user ID MUST match get_current_user_id() so that
+    service tests and API endpoint tests use the same user identity.
+    
     Args:
         db_session: Test database session
         
     Returns:
-        UserDB: Created user object with ID
+        UserDB: Created user object with ID matching get_current_user_id()
         
     Example:
         >>> def test_thought_creation(db_session, sample_user):
@@ -227,10 +305,20 @@ def sample_user(db_session) -> UserDB:
         ...     db_session.add(thought)
         ...     db_session.commit()
     """
+    from src.api.auth import get_current_user_id
+    
+    # Use the same ID as get_current_user_id() for consistency
+    user_id = get_current_user_id()
+    
+    # Check if user already exists (api_client fixture may have created it)
+    existing = db_session.query(UserDB).filter(UserDB.id == user_id).first()
+    if existing:
+        return existing
+    
     user = UserDB(
-        id=str(uuid4()),
+        id=user_id,
         name="Test User",
-        email=f"test_{uuid4()}@example.com",  # Unique email per test
+        email="test@example.com",
         preferences={
             "timezone": "America/New_York",
             "max_thoughts_goal": 20
@@ -277,6 +365,112 @@ def sample_task_data() -> dict:
         "priority": Priority.MEDIUM.value,
         "status": TaskStatus.PENDING.value
     }
+
+
+# Service fixtures for direct service testing
+
+@pytest.fixture
+def thought_service(db_session):
+    """Provide ThoughtService instance with test database."""
+    from src.services.thought_service import ThoughtService
+    return ThoughtService(db_session)
+
+
+@pytest.fixture
+def task_service(db_session):
+    """Provide TaskService instance with test database."""
+    from src.services.task_service import TaskService
+    return TaskService(db_session)
+
+
+@pytest.fixture
+def context_service(db_session):
+    """Provide ContextService instance with test database."""
+    from src.services.context_service import ContextService
+    return ContextService(db_session)
+
+
+@pytest.fixture
+def claude_analysis_service(db_session):
+    """Provide ClaudeAnalysisService instance with test database."""
+    from src.services.claude_analysis_service import ClaudeAnalysisService
+    return ClaudeAnalysisService(db_session)
+
+
+# Factory fixtures for flexible test data creation
+
+@pytest.fixture
+def create_thought(db_session, sample_user):
+    """
+    Factory fixture for creating test thoughts.
+    
+    Usage:
+        thought = create_thought(content="Test")
+        thought = create_thought(content="Test", tags=["a", "b"])
+    """
+    from src.models.thought import ThoughtDB
+    
+    def _create_thought(
+        content: str = "Test thought",
+        tags: list = None,
+        status: str = ThoughtStatus.ACTIVE.value,
+        context: dict = None
+    ):
+        thought = ThoughtDB(
+            id=str(uuid4()),
+            user_id=sample_user.id,
+            content=content,
+            tags=tags or [],
+            status=status,
+            context=context,
+            created_at=utc_now(),
+            updated_at=utc_now()
+        )
+        db_session.add(thought)
+        db_session.commit()
+        db_session.refresh(thought)
+        return thought
+    
+    return _create_thought
+
+
+@pytest.fixture
+def create_task(db_session, sample_user):
+    """
+    Factory fixture for creating test tasks.
+    
+    Usage:
+        task = create_task(title="Test")
+        task = create_task(title="Test", priority="high")
+    """
+    from src.models.task import TaskDB
+    
+    def _create_task(
+        title: str = "Test task",
+        description: str = None,
+        priority: str = Priority.MEDIUM.value,
+        status: str = TaskStatus.PENDING.value,
+        source_thought_id: str = None,
+        due_date = None
+    ):
+        task = TaskDB(
+            id=str(uuid4()),
+            user_id=sample_user.id,
+            title=title,
+            description=description,
+            priority=priority,
+            status=status,
+            source_thought_id=source_thought_id,
+            due_date=due_date,
+            created_at=utc_now(),
+            updated_at=utc_now()
+        )
+        db_session.add(task)
+        db_session.commit()
+        db_session.refresh(task)
+        return task
+    
+    return _create_task
 
 
 # Test utility functions

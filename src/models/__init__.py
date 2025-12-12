@@ -32,6 +32,14 @@ from .enums import (
 )
 
 
+# User models
+from .user import (
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    UserDB
+)
+
 # Thought models
 from .thought import (
     ThoughtCreate,
@@ -80,6 +88,11 @@ __all__ = [
     "EnergyLevel",
     "FocusState",
     "AnalysisType",
+    # User models
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "UserDB",
     # Thought models
     "ThoughtCreate",
     "ThoughtUpdate",

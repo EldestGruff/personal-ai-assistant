@@ -13,7 +13,7 @@ from uuid import UUID
 from pydantic import Field
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 
-from .base import BaseRequestModel, BaseDBModel
+from .base import BaseRequestModel, BaseDBModel, TZDateTime
 from .enums import TimeOfDay, EnergyLevel, FocusState
 
 
@@ -107,7 +107,7 @@ class ContextDB(BaseDBModel):
     # Override base id to use session_id as primary key
     id = Column(String(255), primary_key=True)  # session_id
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    started_at = Column(DateTime(timezone=True), nullable=False)
+    started_at = Column(TZDateTime, nullable=False)
     current_activity = Column(String(255), nullable=True)
     active_app = Column(String(255), nullable=True)
     location = Column(String(255), nullable=True)
@@ -116,7 +116,7 @@ class ContextDB(BaseDBModel):
     focus_state = Column(String(50), nullable=True)
     thought_count = Column(Integer, nullable=False, default=0)
     notes = Column(Text, nullable=True)
-    ended_at = Column(DateTime(timezone=True), nullable=True)
+    ended_at = Column(TZDateTime, nullable=True)
     
     def __repr__(self) -> str:
         """String representation for debugging."""

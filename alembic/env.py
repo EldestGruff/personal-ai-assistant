@@ -14,6 +14,7 @@ from alembic import context
 
 # Import Base and all models to ensure they're registered
 from src.models.base import Base
+from src.models.user import UserDB
 from src.models.thought import ThoughtDB
 from src.models.task import TaskDB
 from src.models.context import ContextDB

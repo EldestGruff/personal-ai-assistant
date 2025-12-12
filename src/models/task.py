@@ -16,6 +16,7 @@ from .base import (
     BaseTimestampModel,
     BaseRequestModel,
     BaseDBModel,
+    TZDateTime,
     validate_content_length
 )
 from .enums import TaskStatus, Priority
@@ -86,22 +87,6 @@ class TaskCreate(BaseRequestModel):
         """Validate description if provided."""
         if v is not None:
             return validate_content_length(v, max_length=5000)
-        return v
-    
-    @field_validator('due_date')
-    @classmethod
-    def validate_due_date(cls, v: Optional[date]) -> Optional[date]:
-        """
-        Validate due date is not in the past.
-        
-        Note: Only validates on creation. Updates can set past dates
-        if task was delayed.
-        """
-        if v is not None and v < date.today():
-            raise ValueError(
-                f"Due date {v} is in the past. "
-                f"Use today's date or later."
-            )
         return v
 
 
@@ -214,7 +199,7 @@ class TaskDB(BaseDBModel):
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     source_thought_id = Column(
         String(36),
-        ForeignKey("thoughts.id"),
+        ForeignKey("thoughts.id", ondelete="SET NULL"),
         nullable=True
     )
     title = Column(String(200), nullable=False)
@@ -231,7 +216,7 @@ class TaskDB(BaseDBModel):
     )
     due_date = Column(Date, nullable=True)
     estimated_effort_minutes = Column(Integer, nullable=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(TZDateTime, nullable=True)
     linked_reminders = Column(JSON, nullable=False, default=list)
     subtasks = Column(JSON, nullable=False, default=list)
 

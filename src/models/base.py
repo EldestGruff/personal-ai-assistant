@@ -10,12 +10,40 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel as PydanticBaseModel, Field, field_validator
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, String, TypeDecorator
 from sqlalchemy.ext.declarative import declarative_base
 
 
 # SQLAlchemy declarative base for ORM models
 Base = declarative_base()
+
+
+class TZDateTime(TypeDecorator):
+    """
+    Custom SQLAlchemy type that ensures timezone awareness for SQLite.
+    
+    SQLite stores datetimes as strings and doesn't preserve timezone info.
+    This decorator ensures that when reading from the database, we always
+    return timezone-aware UTC datetimes.
+    """
+    impl = DateTime
+    cache_ok = True
+
+    def process_result_value(self, value: Optional[datetime], dialect) -> Optional[datetime]:
+        """
+        Convert naive datetime from database to timezone-aware UTC.
+        
+        Args:
+            value: Datetime value from database (may be naive)
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Timezone-aware datetime in UTC, or None if value is None
+        """
+        if value is not None and value.tzinfo is None:
+            # Assume database values are in UTC and add timezone info
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
 
 def utc_now() -> datetime:
@@ -103,12 +131,12 @@ class BaseDBModel(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     created_at = Column(
-        DateTime(timezone=True),
+        TZDateTime,
         nullable=False,
         default=utc_now
     )
     updated_at = Column(
-        DateTime(timezone=True),
+        TZDateTime,
         nullable=False,
         default=utc_now,
         onupdate=utc_now

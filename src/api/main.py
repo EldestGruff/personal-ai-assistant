@@ -9,10 +9,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from .middleware import RateLimitMiddleware
+from .middleware import RateLimitMiddleware, service_exception_handler
 from .responses import APIResponse, APIError
 from .routes import (
     health_router,
@@ -20,6 +22,7 @@ from .routes import (
     tasks_router,
     claude_router
 )
+from ..services.exceptions import ServiceError
 
 # Create FastAPI app
 app = FastAPI(
@@ -42,6 +45,12 @@ app.add_middleware(
 # Add rate limiting middleware
 app.add_middleware(RateLimitMiddleware)
 
+# Global exception handler for ServiceError
+@app.exception_handler(ServiceError)
+async def service_error_handler(request: Request, exc: ServiceError):
+    """Handle service layer exceptions with standard format."""
+    return await service_exception_handler(request, exc)
+
 # Global exception handler for APIError
 @app.exception_handler(APIError)
 async def api_error_handler(request: Request, exc: APIError):
@@ -51,6 +60,35 @@ async def api_error_handler(request: Request, exc: APIError):
         message=exc.message,
         details=exc.details,
         status_code=exc.status_code
+    )
+
+# Global exception handler for Pydantic validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Convert Pydantic validation errors to standard API format."""
+    # Extract first error for cleaner message
+    errors = exc.errors()
+    if errors:
+        first_error = errors[0]
+        field = ' -> '.join(str(loc) for loc in first_error['loc'])
+        message = f"Invalid {field}: {first_error['msg']}"
+    else:
+        message = "Validation error"
+    
+    # Ensure errors are JSON serializable by converting to dict with only serializable values
+    serializable_errors = []
+    for error in errors:
+        serializable_errors.append({
+            "loc": [str(loc) for loc in error.get("loc", [])],
+            "msg": str(error.get("msg", "")),
+            "type": str(error.get("type", ""))
+        })
+    
+    return APIResponse.error(
+        code="INVALID_CONTENT",
+        message=message,
+        details={"validation_errors": serializable_errors},
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
     )
 
 # Global exception handler for unexpected errors
