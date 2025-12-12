@@ -5,6 +5,7 @@ This module is run whenever the alembic migration tool is invoked.
 It sets up the database connection and runs migrations.
 """
 
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -43,7 +44,8 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the
     script output.
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Check for DATABASE_URL environment variable first
+    url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,8 +64,13 @@ def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
+    # Check for DATABASE_URL environment variable first
+    configuration = config.get_section(config.config_ini_section, {})
+    if os.getenv("DATABASE_URL"):
+        configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
+    
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
