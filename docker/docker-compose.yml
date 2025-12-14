@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: personal-ai-assistant-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aiassistant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aiassistant}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - API_KEY=${API_KEY}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - ai-assistant-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:15-alpine
+    container_name: personal-ai-assistant-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-aiassistant}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-aiassistant}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - /mnt/data2-pool/andy-ai/postgres:/var/lib/postgresql/data
+    networks:
+      - ai-assistant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiassistant} -d ${POSTGRES_DB:-aiassistant}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  ai-assistant-network:
+    driver: bridge
