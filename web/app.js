@@ -29,11 +29,18 @@ const api = {
             const response = await fetch(url, { ...options, headers });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
             }
 
-            const data = await response.json();
-            return data;
+            const result = await response.json();
+
+            // FastAPI returns { success: true, data: {...} }
+            if (result.success && result.data) {
+                return result.data;
+            }
+
+            return result;
         } catch (error) {
             console.error('API Error:', error);
             showError(`Failed to ${options.method || 'GET'} ${endpoint}: ${error.message}`);
@@ -42,15 +49,56 @@ const api = {
     },
 
     async getThoughts() {
-        return await this.request('/thoughts?limit=1000&sort_by=created_at&sort_order=desc');
+        // API has pagination, fetch all thoughts in batches
+        let allThoughts = [];
+        let offset = 0;
+        const limit = 100; // Max allowed by API
+
+        while (true) {
+            const response = await this.request(`/thoughts?limit=${limit}&offset=${offset}&sort_by=created_at&sort_order=desc`);
+
+            // Response format: { thoughts: [...], pagination: {...} }
+            const thoughts = response.thoughts || [];
+            allThoughts = allThoughts.concat(thoughts);
+
+            // Check if there are more results
+            if (!response.pagination || !response.pagination.has_more) {
+                break;
+            }
+
+            offset += limit;
+        }
+
+        return allThoughts;
     },
 
     async getTasks() {
-        return await this.request('/tasks?limit=1000');
+        // API has pagination, fetch all tasks in batches
+        let allTasks = [];
+        let offset = 0;
+        const limit = 100;
+
+        while (true) {
+            const response = await this.request(`/tasks?limit=${limit}&offset=${offset}`);
+
+            // Response format: { tasks: [...], pagination: {...} }
+            const tasks = response.tasks || [];
+            allTasks = allTasks.concat(tasks);
+
+            // Check if there are more results
+            if (!response.pagination || !response.pagination.has_more) {
+                break;
+            }
+
+            offset += limit;
+        }
+
+        return allTasks;
     },
 
     async searchThoughts(query) {
-        return await this.request(`/thoughts/search?q=${encodeURIComponent(query)}&limit=100`);
+        const response = await this.request(`/thoughts/search?q=${encodeURIComponent(query)}&limit=100`);
+        return response.results || [];
     }
 };
 
