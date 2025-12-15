@@ -144,9 +144,24 @@ async def startup_event():
     print("📝 API Documentation: http://localhost:8000/docs")
     print("❤️  Health Check: http://localhost:8000/api/v1/health")
 
+    # Start the background scheduler
+    from ..services.scheduler_service import get_scheduler
+    scheduler = get_scheduler()
+    scheduler.start_consciousness_check_schedule()
+    print("⏰ Background scheduler started")
+
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup resources on application shutdown."""
     print("👋 Personal AI Assistant API shutting down...")
+
+    # Shutdown the scheduler
+    from ..services.scheduler_service import get_scheduler
+    try:
+        scheduler = get_scheduler()
+        scheduler.shutdown()
+        print("⏰ Scheduler stopped")
+    except Exception as e:
+        print(f"Error stopping scheduler: {e}")

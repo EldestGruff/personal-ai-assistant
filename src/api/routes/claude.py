@@ -423,3 +423,70 @@ async def analyze_thought(
             message=f"Failed to analyze thought: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@router.get("/latest-consciousness-check", status_code=status.HTTP_200_OK)
+async def get_latest_consciousness_check(
+    api_key: str = Depends(verify_api_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the latest consciousness check from the database.
+
+    Returns the most recent consciousness check analysis without triggering a new one.
+    Useful for displaying cached results after scheduled checks.
+
+    Returns:
+        Latest consciousness check data or empty state if none exists
+    """
+    try:
+        user_id = UUID(get_current_user_id())
+
+        # Get the most recent consciousness check
+        analysis_service = ClaudeAnalysisService(db)
+        from ...models.claude_analysis import ClaudeAnalysisDB
+
+        latest = db.query(ClaudeAnalysisDB).filter(
+            ClaudeAnalysisDB.user_id == user_id,
+            ClaudeAnalysisDB.analysis_type == AnalysisType.CONSCIOUSNESS_CHECK
+        ).order_by(ClaudeAnalysisDB.created_at.desc()).first()
+
+        if not latest:
+            return APIResponse.success(
+                data={
+                    "analysis_id": None,
+                    "timestamp": None,
+                    "summary": "No consciousness checks yet. First check will run automatically within 30 minutes.",
+                    "themes": [],
+                    "suggested_actions": [],
+                    "concerns": [],
+                    "positives": [],
+                    "tokens_used": 0,
+                    "thoughts_analyzed": 0
+                }
+            )
+
+        # Parse raw response to get full data
+        raw = latest.raw_response or {}
+
+        return APIResponse.success(
+            data={
+                "analysis_id": latest.id,
+                "timestamp": latest.created_at.isoformat(),
+                "summary": latest.summary,
+                "themes": latest.themes or [],
+                "suggested_actions": raw.get("suggested_actions", []),
+                "concerns": raw.get("concerns", []),
+                "positives": raw.get("positives", []),
+                "tokens_used": latest.tokens_used,
+                "thoughts_analyzed": raw.get("thoughts_analyzed", 0)
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching latest consciousness check: {e}")
+        raise APIError(
+            code="FETCH_FAILED",
+            message=f"Failed to fetch latest consciousness check: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

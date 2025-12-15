@@ -115,6 +115,11 @@ const api = {
             })
         });
         return response;
+    },
+
+    async getLatestConsciousnessCheck() {
+        const response = await this.request(`/claude/latest-consciousness-check`);
+        return response;
     }
 };
 
@@ -210,18 +215,7 @@ const ui = {
         const container = document.getElementById('claude-insights');
 
         // Prevent multiple simultaneous requests
-        if (state.consciousnessCheck.isLoading && !forceRefresh) {
-            return;
-        }
-
-        // Check if we should use cached result (less than 30 minutes old)
-        const now = new Date();
-        const lastCheck = state.consciousnessCheck.lastCheck;
-        const thirtyMinutes = 30 * 60 * 1000;
-
-        if (!forceRefresh && lastCheck && (now - new Date(lastCheck.timestamp)) < thirtyMinutes) {
-            // Use cached insights
-            this.displayClaudeInsights(lastCheck);
+        if (state.consciousnessCheck.isLoading) {
             return;
         }
 
@@ -230,16 +224,19 @@ const ui = {
         container.innerHTML = `
             <div class="insights-loading">
                 <div class="spinner-small"></div>
-                <span>Analyzing your recent thoughts...</span>
+                <span>${forceRefresh ? 'Analyzing your recent thoughts...' : 'Loading latest insights...'}</span>
             </div>
         `;
 
         try {
-            // Fetch consciousness check from Claude
-            const insights = await api.getConsciousnessCheck(20);
+            // If force refresh, trigger a new check
+            // Otherwise, just fetch the latest one from the database
+            const insights = forceRefresh
+                ? await api.getConsciousnessCheck(20)
+                : await api.getLatestConsciousnessCheck();
 
             if (!insights || !insights.summary) {
-                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Add more thoughts to get AI-powered insights');
+                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Waiting for first scheduled check or click refresh');
                 state.consciousnessCheck.isLoading = false;
                 return;
             }
@@ -266,12 +263,6 @@ const ui = {
     displayClaudeInsights(insights) {
         const container = document.getElementById('claude-insights');
 
-        // Calculate time until next auto-refresh
-        const lastCheckTime = new Date(insights.timestamp);
-        const now = new Date();
-        const timeSinceCheck = Math.floor((now - lastCheckTime) / 1000 / 60); // minutes
-        const timeUntilNext = Math.max(0, 30 - timeSinceCheck);
-
         container.innerHTML = `
             <div class="insights-content">
                 <div class="insights-summary">
@@ -279,8 +270,8 @@ const ui = {
                     <div class="insights-meta">
                         <span>📊 ${insights.thoughts_analyzed} thoughts analyzed</span>
                         <span>⚡ ${insights.tokens_used} tokens</span>
-                        <span>🕒 Last check: ${utils.timeAgo(insights.timestamp)}</span>
-                        ${timeUntilNext > 0 ? `<span class="next-refresh">Next auto-refresh in ${timeUntilNext}m</span>` : ''}
+                        <span>🕒 ${utils.timeAgo(insights.timestamp)}</span>
+                        <span class="next-refresh">Auto-checks every 30 minutes</span>
                     </div>
                 </div>
 
@@ -819,30 +810,9 @@ async function init() {
 
     setupEventListeners();
     await loadData();
-    setupAutoRefresh();
 
     console.log('✅ Dashboard ready');
-}
-
-function setupAutoRefresh() {
-    // Set up 30-minute auto-refresh for consciousness check
-    const thirtyMinutes = 30 * 60 * 1000;
-
-    // Clear any existing interval
-    if (state.consciousnessCheck.autoRefreshInterval) {
-        clearInterval(state.consciousnessCheck.autoRefreshInterval);
-    }
-
-    // Set up new interval
-    state.consciousnessCheck.autoRefreshInterval = setInterval(() => {
-        // Only auto-refresh if on dashboard view
-        if (state.currentView === 'dashboard') {
-            console.log('🔄 Auto-refreshing consciousness check...');
-            ui.renderClaudeInsights(true);
-        }
-    }, thirtyMinutes);
-
-    console.log('⏰ Auto-refresh enabled: consciousness check every 30 minutes');
+    console.log('ℹ️  Consciousness checks run automatically every 30 minutes on the server');
 }
 
 // Start app when DOM is ready

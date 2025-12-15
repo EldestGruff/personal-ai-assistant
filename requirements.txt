@@ -12,6 +12,9 @@ psycopg2-binary==2.9.9
 # Anthropic Claude API
 anthropic==0.40.0
 
+# Scheduling
+apscheduler==3.10.4
+
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.6
