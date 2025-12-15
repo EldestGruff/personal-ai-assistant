@@ -12,7 +12,10 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
+import os
+from pathlib import Path
 
 from .middleware import RateLimitMiddleware, service_exception_handler
 from .responses import APIResponse, APIError
@@ -34,12 +37,14 @@ app = FastAPI(
 )
 
 # CORS configuration
+# Allow all origins for iOS Shortcuts and web clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*", "X-API-Key"],
+    allow_origins=["*"],
+    allow_credentials=False,  # Must be False when allow_origins=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add rate limiting middleware
@@ -108,6 +113,13 @@ app.include_router(thoughts_router, prefix="/api/v1")
 app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(claude_router, prefix="/api/v1")
 
+# Mount static files for web dashboard
+# Look for web directory relative to this file
+web_dir = Path(__file__).parent.parent.parent / "web"
+if web_dir.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(web_dir), html=True), name="dashboard")
+    print(f"📱 Dashboard mounted at /dashboard from {web_dir}")
+
 # Root endpoint
 @app.get("/")
 async def root():
@@ -118,7 +130,8 @@ async def root():
             "version": "0.1.0",
             "status": "operational",
             "documentation": "/docs",
-            "health_check": "/api/v1/health"
+            "health_check": "/api/v1/health",
+            "dashboard": "/dashboard"
         }
     )
 

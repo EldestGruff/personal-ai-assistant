@@ -12,6 +12,11 @@ const state = {
         thoughtTag: '',
         taskStatus: 'all',
         taskPriority: 'all'
+    },
+    consciousnessCheck: {
+        lastCheck: null,
+        autoRefreshInterval: null,
+        isLoading: false
     }
 };
 
@@ -99,6 +104,17 @@ const api = {
     async searchThoughts(query) {
         const response = await this.request(`/thoughts/search?q=${encodeURIComponent(query)}&limit=100`);
         return response.results || [];
+    },
+
+    async getConsciousnessCheck(limitRecent = 20) {
+        const response = await this.request(`/claude/consciousness-check`, {
+            method: 'POST',
+            body: JSON.stringify({
+                limit_recent: limitRecent,
+                include_archived: false
+            })
+        });
+        return response;
     }
 };
 
@@ -174,6 +190,7 @@ const ui = {
     // Dashboard View
     renderDashboard() {
         this.renderQuickStats();
+        this.renderClaudeInsights();
         this.renderRecentThoughts();
         this.renderTopTags();
         this.renderActiveTasks();
@@ -187,6 +204,123 @@ const ui = {
         document.getElementById('dash-total-tasks').textContent = state.tasks.length;
         document.getElementById('dash-today-thoughts').textContent = todayCount;
         document.getElementById('dash-week-thoughts').textContent = weekCount;
+    },
+
+    async renderClaudeInsights(forceRefresh = false) {
+        const container = document.getElementById('claude-insights');
+
+        // Prevent multiple simultaneous requests
+        if (state.consciousnessCheck.isLoading && !forceRefresh) {
+            return;
+        }
+
+        // Check if we should use cached result (less than 30 minutes old)
+        const now = new Date();
+        const lastCheck = state.consciousnessCheck.lastCheck;
+        const thirtyMinutes = 30 * 60 * 1000;
+
+        if (!forceRefresh && lastCheck && (now - new Date(lastCheck.timestamp)) < thirtyMinutes) {
+            // Use cached insights
+            this.displayClaudeInsights(lastCheck);
+            return;
+        }
+
+        // Show loading state
+        state.consciousnessCheck.isLoading = true;
+        container.innerHTML = `
+            <div class="insights-loading">
+                <div class="spinner-small"></div>
+                <span>Analyzing your recent thoughts...</span>
+            </div>
+        `;
+
+        try {
+            // Fetch consciousness check from Claude
+            const insights = await api.getConsciousnessCheck(20);
+
+            if (!insights || !insights.summary) {
+                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Add more thoughts to get AI-powered insights');
+                state.consciousnessCheck.isLoading = false;
+                return;
+            }
+
+            // Store in state
+            state.consciousnessCheck.lastCheck = insights;
+            state.consciousnessCheck.isLoading = false;
+
+            // Display the insights
+            this.displayClaudeInsights(insights);
+
+        } catch (error) {
+            console.error('Failed to load Claude insights:', error);
+            state.consciousnessCheck.isLoading = false;
+            container.innerHTML = `
+                <div class="insights-error">
+                    <p>⚠️ Failed to load AI insights</p>
+                    <button onclick="ui.renderClaudeInsights(true)" class="btn-retry">Retry</button>
+                </div>
+            `;
+        }
+    },
+
+    displayClaudeInsights(insights) {
+        const container = document.getElementById('claude-insights');
+
+        // Calculate time until next auto-refresh
+        const lastCheckTime = new Date(insights.timestamp);
+        const now = new Date();
+        const timeSinceCheck = Math.floor((now - lastCheckTime) / 1000 / 60); // minutes
+        const timeUntilNext = Math.max(0, 30 - timeSinceCheck);
+
+        container.innerHTML = `
+            <div class="insights-content">
+                <div class="insights-summary">
+                    <p>${this.escapeHtml(insights.summary)}</p>
+                    <div class="insights-meta">
+                        <span>📊 ${insights.thoughts_analyzed} thoughts analyzed</span>
+                        <span>⚡ ${insights.tokens_used} tokens</span>
+                        <span>🕒 Last check: ${utils.timeAgo(insights.timestamp)}</span>
+                        ${timeUntilNext > 0 ? `<span class="next-refresh">Next auto-refresh in ${timeUntilNext}m</span>` : ''}
+                    </div>
+                </div>
+
+                ${insights.themes && insights.themes.length > 0 ? `
+                    <div class="insights-section">
+                        <h4>🎯 Key Themes</h4>
+                        <div class="insights-tags">
+                            ${insights.themes.map(theme => `<span class="insight-tag theme-tag">${this.escapeHtml(theme)}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${insights.suggested_actions && insights.suggested_actions.length > 0 ? `
+                    <div class="insights-section">
+                        <h4>💡 Suggested Actions</h4>
+                        <ul class="insights-list">
+                            ${insights.suggested_actions.map(action => `<li>${this.escapeHtml(action)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+
+                ${insights.positives && insights.positives.length > 0 ? `
+                    <div class="insights-section positive">
+                        <h4>✨ Positives</h4>
+                        <ul class="insights-list">
+                            ${insights.positives.map(positive => `<li>${this.escapeHtml(positive)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+
+                ${insights.concerns && insights.concerns.length > 0 ? `
+                    <div class="insights-section concern">
+                        <h4>⚠️ Concerns</h4>
+                        <ul class="insights-list">
+                            ${insights.concerns.map(concern => `<li>${this.escapeHtml(concern)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
     },
 
     renderRecentThoughts() {
@@ -571,6 +705,11 @@ function setupEventListeners() {
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', loadData);
 
+    // Claude insights refresh button - force refresh
+    document.getElementById('refresh-insights-btn').addEventListener('click', () => {
+        ui.renderClaudeInsights(true);
+    });
+
     // Thought filters
     document.getElementById('thought-search').addEventListener('input', (e) => {
         state.filters.thoughtSearch = e.target.value;
@@ -680,8 +819,30 @@ async function init() {
 
     setupEventListeners();
     await loadData();
+    setupAutoRefresh();
 
     console.log('✅ Dashboard ready');
+}
+
+function setupAutoRefresh() {
+    // Set up 30-minute auto-refresh for consciousness check
+    const thirtyMinutes = 30 * 60 * 1000;
+
+    // Clear any existing interval
+    if (state.consciousnessCheck.autoRefreshInterval) {
+        clearInterval(state.consciousnessCheck.autoRefreshInterval);
+    }
+
+    // Set up new interval
+    state.consciousnessCheck.autoRefreshInterval = setInterval(() => {
+        // Only auto-refresh if on dashboard view
+        if (state.currentView === 'dashboard') {
+            console.log('🔄 Auto-refreshing consciousness check...');
+            ui.renderClaudeInsights(true);
+        }
+    }, thirtyMinutes);
+
+    console.log('⏰ Auto-refresh enabled: consciousness check every 30 minutes');
 }
 
 // Start app when DOM is ready

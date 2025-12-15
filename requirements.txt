@@ -10,7 +10,7 @@ alembic==1.13.1
 psycopg2-binary==2.9.9
 
 # Anthropic Claude API
-anthropic==0.8.1
+anthropic==0.40.0
 
 # Utilities
 python-dotenv==1.0.0

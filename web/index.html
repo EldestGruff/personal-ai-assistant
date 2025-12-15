@@ -29,6 +29,20 @@
         <!-- Dashboard View -->
         <div id="dashboard-view" class="view active">
             <div class="dashboard-grid">
+                <!-- Claude Consciousness Check -->
+                <div class="card claude-insights-card">
+                    <div class="card-header">
+                        <h2>🤖 Claude Consciousness Check</h2>
+                        <button id="refresh-insights-btn" class="btn-icon" title="Refresh insights">↻</button>
+                    </div>
+                    <div id="claude-insights" class="claude-insights">
+                        <div class="insights-loading">
+                            <div class="spinner-small"></div>
+                            <span>Analyzing your recent thoughts...</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quick Stats -->
                 <div class="card">
                     <h2>📊 Quick Stats</h2>

@@ -3,35 +3,11 @@
 
 ---
 
-## Overview
+## Quick Reference
 
-This guide provides ready-to-use iOS Shortcuts for capturing thoughts and managing tasks from your iPhone. These shortcuts enable the **<10 second capture** goal while you're on the go.
-
----
-
-## Prerequisites
-
-- **API Deployed:** `https://ai.gruff.icu` accessible
-- **API Key:** Your UUID from `.env` file
-- **iOS Device:** iPhone with Shortcuts app (built-in iOS 13+)
-- **Network Access:** WiFi or cellular data
-
----
-
-## Quick Start
-
-### 1. Get Your API Key
-
-From your `.env` file on TrueNAS:
-```bash
-cat /mnt/data2-pool/andy-ai/personal-ai-assistant/docker/.env | grep API_KEY
-```
-
-Copy the UUID (e.g., `D2E1B06E-2C3D-4245-B271-CAA054DEDCE4`)
-
-### 2. Create Your First Shortcut
-
-**Open Shortcuts app** → **+** (New Shortcut) → Follow instructions below
+**API Endpoint:** `https://ai.gruff.icu/api/v1`
+**API Key:** `ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+**Authentication:** `Authorization: Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
 
 ---
 
@@ -39,46 +15,63 @@ Copy the UUID (e.g., `D2E1B06E-2C3D-4245-B271-CAA054DEDCE4`)
 
 **Purpose:** Capture a thought with text input in <10 seconds
 
+### Step-by-Step Setup:
+
+1. **Open Shortcuts app** on your iPhone
+2. Tap **+** (top right) to create new shortcut
+3. Tap **Add Action**
+
 ### Actions to Add:
 
-1. **Ask for Input**
-   - Prompt: `What's on your mind?`
-   - Input Type: `Text`
-   - Default Answer: (leave empty)
+**Action 1: Ask for Input**
+- Search for: `Ask for Input`
+- Tap it to add
+- Configure:
+  - **Prompt:** `What's on your mind?`
+  - **Input Type:** Text
+  - **Default Answer:** (leave blank)
 
-2. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/thoughts`
+**Action 2: Get Contents of URL**
+- Search for: `Get Contents of URL`
+- Tap it to add
+- Configure:
+  - **URL:** `https://ai.gruff.icu/api/v1/thoughts`
+  - **Method:** POST
+  - Tap **Show More** ▼
+  - **Headers:** Tap "Add new field"
+    - Key: `Authorization`
+    - Value: `Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+  - **Request Body:** JSON
+  - Tap the JSON field and configure:
+    ```json
+    {
+      "content": "Provided Input"
+    }
+    ```
+    - When typing "Provided Input", tap on it and select the magic variable from "Ask for Input"
 
-3. **Get Contents of URL**
-   - URL: `Text` (from previous action)
-   - Method: `POST`
-   - Headers:
-     - `X-API-Key`: `YOUR_API_KEY_HERE`
-     - `Content-Type`: `application/json`
-   - Request Body: `JSON`
-   - JSON:
-     ```json
-     {
-       "content": "Provided Input"
-     }
-     ```
-     (Select "Provided Input" from magic variable for Ask for Input)
+**Action 3: Show Notification**
+- Search for: `Show Notification`
+- Configure:
+  - **Text:** `Thought captured! ✓`
 
-4. **Show Notification**
-   - Content: `Thought captured! ✓`
-   - Sound: `Default`
+### Final Settings:
 
-### Settings:
+1. Tap the shortcut name at top (says "New Shortcut")
+2. Rename to: `Quick Capture`
+3. Tap the icon to change it:
+   - Choose 💭 (thought bubble)
+   - Color: Blue
+4. Enable these options:
+   - **Show in Share Sheet:** OFF
+   - **Add to Home Screen:** ON
+5. Tap **Done**
 
-**Shortcut Name:** `Quick Capture`
+### Testing:
 
-**Icon:** 💭 (thought bubble) - Blue color
-
-**Show in Share Sheet:** OFF
-
-**Show in Widgets:** ON
-
-**Add to Home Screen:** ON (for fastest access)
+1. Tap the shortcut to run it
+2. Type "test thought"
+3. You should see "Thought captured! ✓"
 
 ---
 
@@ -88,509 +81,191 @@ Copy the UUID (e.g., `D2E1B06E-2C3D-4245-B271-CAA054DEDCE4`)
 
 ### Actions to Add:
 
-1. **Dictate Text**
-   - Language: `English (US)` or your preference
-   - Stop Listening: `On Pause`
+**Action 1: Dictate Text**
+- Search for: `Dictate Text`
+- Configure:
+  - **Language:** English (US)
+  - **Stop Listening:** On Pause
 
-2. **If** (check if dictation worked)
-   - Condition: `Dictated Text` `is not` (empty)
+**Action 2: Get Contents of URL**
+- **URL:** `https://ai.gruff.icu/api/v1/thoughts`
+- **Method:** POST
+- **Headers:**
+  - `Authorization`: `Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+- **Request Body:** JSON
+  ```json
+  {
+    "content": "Dictated Text"
+  }
+  ```
+  (Select "Dictated Text" from magic variables)
 
-3. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/thoughts`
-
-4. **Get Contents of URL**
-   - URL: `Text` (from previous action)
-   - Method: `POST`
-   - Headers:
-     - `X-API-Key`: `YOUR_API_KEY_HERE`
-     - `Content-Type`: `application/json`
-   - Request Body: `JSON`
-   - JSON:
-     ```json
-     {
-       "content": "Dictated Text"
-     }
-     ```
-     (Select "Dictated Text" from magic variable)
-
-5. **Show Notification**
-   - Content: `Voice thought captured! 🎤`
-
-6. **Otherwise**
-
-7. **Show Alert**
-   - Title: `No Input`
-   - Message: `Please try again`
-   - Show Cancel Button: OFF
-
-8. **End If**
+**Action 3: Show Notification**
+- **Text:** `Voice thought captured! 🎤`
 
 ### Settings:
-
-**Shortcut Name:** `Voice Capture`
-
-**Icon:** 🎤 (microphone) - Red color
-
-**Show in Widgets:** ON
-
-**Hey Siri:** "Capture thought" or "Quick thought"
+- **Name:** `Voice Capture`
+- **Icon:** 🎤 (microphone) - Red
+- **Add to Siri:** "Capture thought"
 
 ---
 
-## Shortcut 3: Capture with Tags
+## Shortcut 3: Share Sheet Capture
 
-**Purpose:** Add tags while capturing a thought
+**Purpose:** Capture selected text from Safari, Notes, or any app
 
 ### Actions to Add:
 
-1. **Ask for Input**
-   - Prompt: `What's on your mind?`
-   - Input Type: `Text`
+**Action 1: Get Contents of URL**
+- **URL:** `https://ai.gruff.icu/api/v1/thoughts`
+- **Method:** POST
+- **Headers:**
+  - `Authorization`: `Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+- **Request Body:** JSON
+  ```json
+  {
+    "content": "Shortcut Input"
+  }
+  ```
+  (Select "Shortcut Input" from magic variables)
 
-2. **Ask for Input**
-   - Prompt: `Add tags (comma-separated)?`
-   - Input Type: `Text`
-   - Default Answer: `idea`
-
-3. **Text** (Process tags)
-   - Content: `Provided Input` (from tag input)
-
-4. **Split Text**
-   - Text: `Text` (from previous)
-   - Separator: `Custom` → `,`
-
-5. **Repeat with Each**
-   - Input: `Split Text`
-
-6. **Text** (Trim whitespace)
-   - Content: `Repeat Item`
-   - Change Case: `Lowercase`
-
-7. **Add to Variable**
-   - Variable Name: `TagArray`
-
-8. **End Repeat**
-
-9. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/thoughts`
-
-10. **Get Contents of URL**
-    - URL: `Text`
-    - Method: `POST`
-    - Headers:
-      - `X-API-Key`: `YOUR_API_KEY_HERE`
-      - `Content-Type`: `application/json`
-    - Request Body: `JSON`
-    - JSON:
-      ```json
-      {
-        "content": "Provided Input (from first ask)",
-        "tags": "TagArray"
-      }
-      ```
-
-11. **Show Notification**
-    - Content: `Thought captured with tags! 🏷️`
+**Action 2: Show Notification**
+- **Text:** `Shared content captured! 📋`
 
 ### Settings:
+- **Name:** `Share to AI`
+- **Icon:** 📋 (clipboard) - Green
+- **Show in Share Sheet:** ON
+- **Accepted Types:** Text, URLs, Safari web pages
 
-**Shortcut Name:** `Capture with Tags`
-
-**Icon:** 🏷️ (tag) - Orange color
+**Usage:** In Safari or Notes, select text → Share → Share to AI
 
 ---
 
-## Shortcut 4: Share Sheet Capture
+## Shortcut 4: Quick Task
 
-**Purpose:** Capture selected text from any app (Safari, Notes, etc.)
+**Purpose:** Create a task quickly
 
 ### Actions to Add:
 
-1. **Receive** (from Share Sheet)
-   - Input: `Text` or `URLs` or `Safari web pages`
+**Action 1: Ask for Input**
+- **Prompt:** `Task title?`
+- **Input Type:** Text
 
-2. **If**
-   - Condition: `Shortcut Input` `has any value`
+**Action 2: Ask for Input**
+- **Prompt:** `Description (optional)?`
+- **Input Type:** Text
+- **Default Answer:** (leave blank)
 
-3. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/thoughts`
+**Action 3: Get Contents of URL**
+- **URL:** `https://ai.gruff.icu/api/v1/tasks`
+- **Method:** POST
+- **Headers:**
+  - `Authorization`: `Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+- **Request Body:** JSON
+  ```json
+  {
+    "title": "Provided Input",
+    "description": "Provided Input",
+    "priority": "medium"
+  }
+  ```
+  (Map the first "Provided Input" to task title, second to description)
 
-4. **Get Contents of URL**
-   - URL: `Text`
-   - Method: `POST`
-   - Headers:
-     - `X-API-Key`: `YOUR_API_KEY_HERE`
-     - `Content-Type`: `application/json`
-   - Request Body: `JSON`
-   - JSON:
-     ```json
-     {
-       "content": "Shortcut Input"
-     }
-     ```
-
-5. **Show Notification**
-   - Content: `Shared content captured! 📋`
-
-6. **Otherwise**
-
-7. **Show Alert**
-   - Message: `No content to share`
-
-8. **End If**
+**Action 4: Show Notification**
+- **Text:** `Task created! ✅`
 
 ### Settings:
-
-**Shortcut Name:** `Share to AI Assistant`
-
-**Icon:** 📋 (clipboard) - Green color
-
-**Show in Share Sheet:** ON
-
-**Accepted Types:** `Text`, `URLs`, `Safari web pages`
+- **Name:** `Quick Task`
+- **Icon:** ✅ - Purple
 
 ---
 
-## Shortcut 5: Create Task
+## Widget Setup (Fastest Access)
 
-**Purpose:** Quickly create a task with optional due date
+### Add to Home Screen:
 
-### Actions to Add:
-
-1. **Ask for Input**
-   - Prompt: `Task title?`
-   - Input Type: `Text`
-
-2. **Ask for Input**
-   - Prompt: `Task description (optional)?`
-   - Input Type: `Text`
-   - Default Answer: (leave empty)
-
-3. **Ask Each Time**
-   - Prompt: `Set a due date?`
-   - Type: `Menu`
-   - Options:
-     - `Today`
-     - `Tomorrow`
-     - `This Week`
-     - `No Due Date`
-
-4. **If** (Today)
-   - Get `Current Date`
-   - Set Variable: `DueDate`
-
-5. **If** (Tomorrow)
-   - Get `Current Date`
-   - Adjust Date: Add `1` `Day`
-   - Set Variable: `DueDate`
-
-6. **If** (This Week)
-   - Get `Current Date`
-   - Adjust Date: Add `7` `Days`
-   - Set Variable: `DueDate`
-
-7. **Format Date**
-   - Date: `DueDate`
-   - Format: `Custom` → `yyyy-MM-dd`
-
-8. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/tasks`
-
-9. **Get Contents of URL**
-   - URL: `Text`
-   - Method: `POST`
-   - Headers:
-     - `X-API-Key`: `YOUR_API_KEY_HERE`
-     - `Content-Type`: `application/json`
-   - Request Body: `JSON`
-   - JSON:
-     ```json
-     {
-       "title": "Provided Input (from title)",
-       "description": "Provided Input (from description)",
-       "due_date": "Formatted Date",
-       "priority": "medium"
-     }
-     ```
-
-10. **Show Notification**
-    - Content: `Task created! ✅`
-
-### Settings:
-
-**Shortcut Name:** `Quick Task`
-
-**Icon:** ✅ (checkmark) - Purple color
-
----
-
-## Shortcut 6: View Recent Thoughts
-
-**Purpose:** See your last 5 thoughts
-
-### Actions to Add:
-
-1. **Text** (API URL)
-   - Content: `https://ai.gruff.icu/api/v1/thoughts?limit=5&sort_by=created_at&sort_order=desc`
-
-2. **Get Contents of URL**
-   - URL: `Text`
-   - Method: `GET`
-   - Headers:
-     - `X-API-Key`: `YOUR_API_KEY_HERE`
-
-3. **Get Dictionary Value**
-   - Key: `data`
-   - Dictionary: `Contents of URL`
-
-4. **Repeat with Each**
-   - Input: `Dictionary Value`
-
-5. **Get Dictionary Value**
-   - Key: `content`
-   - Dictionary: `Repeat Item`
-
-6. **Text**
-   - Content:
-     ```
-     • Repeat Item [content]
-     ```
-
-7. **Add to Variable**
-   - Variable Name: `ThoughtList`
-
-8. **End Repeat**
-
-9. **Show Result**
-   - Content: `ThoughtList`
-   - (Or use "Show Alert" for cleaner display)
-
-### Settings:
-
-**Shortcut Name:** `Recent Thoughts`
-
-**Icon:** 📝 (memo) - Yellow color
-
-**Show in Widgets:** ON
-
----
-
-## Widget Setup (Home Screen)
-
-### Add Shortcuts Widget:
-
-1. **Long press** on home screen
-2. **Tap** `+` (top left)
-3. **Search** for `Shortcuts`
-4. **Select** widget size (Small recommended)
+1. **Long press** empty space on home screen
+2. Tap **+** (top left)
+3. Search for **Shortcuts**
+4. Choose **Small** widget
 5. **Add Widget**
-6. **Tap** widget to configure
-7. **Select** `Quick Capture` shortcut
-8. **Done**
+6. **Long press** the widget
+7. **Edit Widget**
+8. Select: `Quick Capture`
+9. Tap outside widget to save
 
-### Suggested Layout:
-
-**Small Widget:** Quick Capture
-**Medium Widget:** Voice Capture + Quick Task
-**Large Widget:** All shortcuts grid
+**Result:** One-tap access to thought capture from your home screen!
 
 ---
 
-## Siri Integration
+## Back Tap Setup (Even Faster!)
 
-### Enable Siri Phrases:
+This is the fastest way to capture - works even with screen off (after unlock):
 
-1. **Open Shortcuts app**
-2. **Select** a shortcut
-3. **Tap** `⋯` (details)
-4. **Add to Siri**
-5. **Record** phrase:
+1. **Settings** → **Accessibility**
+2. **Touch** → **Back Tap**
+3. **Double Tap** → Select `Quick Capture`
+4. Done!
+
+**Usage:** Double tap the back of your iPhone → instant thought capture
+
+---
+
+## Siri Commands
+
+For each shortcut:
+
+1. Open **Shortcuts app**
+2. Long press the shortcut
+3. **Rename** → Add to Siri
+4. Record your phrase:
    - "Capture thought" → Quick Capture
    - "Voice thought" → Voice Capture
    - "New task" → Quick Task
-   - "Show thoughts" → Recent Thoughts
 
-### Usage:
-
-- **Hey Siri, capture thought** → Opens text input
-- **Hey Siri, voice thought** → Starts dictation
-- **Hey Siri, new task** → Creates task
-
----
-
-## Advanced: Context-Aware Capture
-
-**Purpose:** Automatically add location/time context
-
-### Additional Actions:
-
-1. **Get Current Location**
-   - (Requires location permission)
-
-2. **Text** (Format location)
-   - Content: `Current Location [Name]`
-
-3. **Text** (Current time of day)
-   - Content:
-     ```
-     If [Current Time] is before 12:00 PM → "morning"
-     If [Current Time] is before 6:00 PM → "afternoon"
-     If [Current Time] is before 9:00 PM → "evening"
-     Otherwise → "night"
-     ```
-
-4. **Add to JSON:**
-   ```json
-   {
-     "content": "...",
-     "context": {
-       "location": "Current Location [Name]",
-       "time_of_day": "calculated time"
-     }
-   }
-   ```
+**Usage:** "Hey Siri, capture thought"
 
 ---
 
 ## Troubleshooting
 
 ### "Cannot Connect to Server"
+- Check internet connection
+- Test in browser: `https://ai.gruff.icu/api/v1/health`
+- Verify you're on WiFi or cellular data
 
-**Causes:**
-- No internet connection
-- VPN not connected (if required)
-- API server down
+### "Unauthorized" Error
+- Double-check the Authorization header
+- Make sure it says: `Bearer ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03`
+- No extra spaces before or after
 
-**Solutions:**
-1. Test in browser: `https://ai.gruff.icu/api/v1/health`
-2. Check WiFi/cellular connection
-3. Verify API key is correct
-4. Check TrueNAS container status
+### Shortcut Runs But Nothing Happens
+- Add a "Show Alert" action after "Get Contents of URL"
+- Display: `Contents of URL`
+- This shows the API response for debugging
 
-### "Unauthorized" / 403 Error
-
-**Cause:** Invalid API key
-
-**Solutions:**
-1. Verify API key in `.env` file
-2. Copy-paste carefully (no extra spaces)
-3. Regenerate API key if needed
-4. Update all shortcuts with new key
-
-### Shortcut Runs But No Data Appears
-
-**Debug:**
-1. Add "Show Alert" action after API call
-2. Display `Contents of URL` to see response
-3. Check response for error messages
-4. Verify JSON structure matches API expectations
-
-### Voice Dictation Not Working
-
-**Causes:**
-- Microphone permission denied
-- Background noise
-- Network issue (requires internet for Siri)
-
-**Solutions:**
-1. Settings > Shortcuts > Allow Microphone
-2. Find quiet location
-3. Speak clearly, pause when done
-4. Check Siri & Search settings
+### Voice Dictation Doesn't Work
+- **Settings** → **Shortcuts** → Allow Microphone
+- Speak clearly and pause when done
+- Requires internet connection
 
 ---
 
-## Performance Tips
+## Summary
 
-### Fastest Capture Method:
+| Shortcut | Speed | Access Method |
+|----------|-------|---------------|
+| Quick Capture | ⚡⚡⚡ | Widget, Back Tap, Siri |
+| Voice Capture | ⚡⚡ | Siri, Widget |
+| Share to AI | ⚡⚡ | Share Sheet |
+| Quick Task | ⚡⚡ | Widget, Siri |
 
-**Option 1: Home Screen Widget**
-- One tap → Direct to input
-- ~5 seconds total
-
-**Option 2: Back Tap**
-- Settings > Accessibility > Touch > Back Tap
-- Double Tap or Triple Tap → Quick Capture
-- Works with screen off (after unlock)
-- ~3 seconds total
-
-**Option 3: Control Center**
-- Settings > Control Center > Add Shortcut
-- Swipe down → Tap shortcut
-- ~4 seconds total
-
-### Recommendation:
-
-**Primary:** Back tap (fastest)
-**Secondary:** Home screen widget (most visible)
-**Tertiary:** Siri voice command (hands-free)
+**Recommended Setup:**
+1. **Primary:** Quick Capture with Back Tap (fastest)
+2. **Secondary:** Voice Capture with Siri (hands-free)
+3. **Tertiary:** Share to AI for web content
 
 ---
 
-## Security Considerations
-
-### API Key Storage
-
-Shortcuts store API keys locally, encrypted with device keychain. However:
-
-**Best Practices:**
-1. Don't share shortcuts with API key embedded
-2. Use separate API keys for different devices (if multi-user)
-3. Rotate keys if device is lost/stolen
-4. Consider VPN-only access for extra security
-
-### Privacy
-
-- Thoughts are transmitted over HTTPS (encrypted)
-- Stored in your private database on moria
-- Not shared with third parties
-- Location data (if used) stays local to context field
-
----
-
-## Next Steps
-
-Once shortcuts are working:
-
-1. **Use for one week** - Capture 30+ thoughts
-2. **Identify friction** - What slows you down?
-3. **Customize** - Adjust prompts, tags, workflows
-4. **Build habits** - Set reminders to capture daily thoughts
-5. **Add automation** - Time-based prompts (e.g., evening reflection)
-
----
-
-## Shortcut Templates Summary
-
-| Shortcut | Purpose | Speed | Complexity |
-|----------|---------|-------|------------|
-| Quick Capture | Text input | ⚡⚡⚡ Fast | ⭐ Simple |
-| Voice Capture | Dictation | ⚡⚡ Medium | ⭐ Simple |
-| Capture with Tags | Categorize | ⚡ Slower | ⭐⭐ Medium |
-| Share Sheet | Capture from apps | ⚡⚡ Medium | ⭐ Simple |
-| Quick Task | Create tasks | ⚡⚡ Medium | ⭐⭐ Medium |
-| Recent Thoughts | View history | ⚡⚡⚡ Fast | ⭐ Simple |
-
----
-
-## Example Workflows
-
-### Morning Routine:
-1. **Hey Siri, capture thought** → "Goals for today"
-2. **Quick Task** → "Review project notes"
-3. **Voice Capture** → "Remember to call mom"
-
-### During Meeting:
-1. **Share Sheet** → Capture key points from notes
-2. **Quick Capture** → "Follow up with John about proposal"
-
-### Evening Reflection:
-1. **Recent Thoughts** → Review day's captures
-2. **Capture with Tags** → "reflection" tag → Daily summary
-
----
-
-**Setup Date:** _____________
-**Primary Shortcut:** ⬜ Quick Capture | ⬜ Voice Capture | ⬜ Other: _______
-**Fastest Method:** ⬜ Widget | ⬜ Back Tap | ⬜ Siri | ⬜ Control Center
-**Status:** ⬜ Not Started | ⬜ Configured | ⬜ Testing | ⬜ Daily Use
+**Status:** Ready to configure ✓

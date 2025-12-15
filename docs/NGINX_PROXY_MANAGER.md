@@ -122,50 +122,19 @@ moria
 **Custom Nginx Configuration:**
 
 ```nginx
-# CORS Configuration for Web/Mobile Clients
-# Allow requests from any origin (adjust if you want specific origins)
-add_header Access-Control-Allow-Origin * always;
-add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
-add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, Accept, Origin" always;
-add_header Access-Control-Max-Age 86400 always;
-
-# Handle preflight OPTIONS requests
-if ($request_method = 'OPTIONS') {
-    add_header Access-Control-Allow-Origin * always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
-    add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-API-Key, Accept, Origin" always;
-    add_header Access-Control-Max-Age 86400 always;
-    add_header Content-Length 0;
-    add_header Content-Type text/plain;
-    return 204;
-}
-
-# Security Headers
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
 # Increase timeouts for long-running Claude API calls
 proxy_connect_timeout 300s;
 proxy_send_timeout 300s;
 proxy_read_timeout 300s;
-send_timeout 300s;
 
-# Proxy headers
+# Proxy headers (preserve original request info)
 proxy_set_header Host $host;
 proxy_set_header X-Real-IP $remote_addr;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
-proxy_set_header X-Forwarded-Host $host;
-proxy_set_header X-Forwarded-Port $server_port;
-
-# Enable compression
-gzip on;
-gzip_vary on;
-gzip_min_length 1024;
-gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss;
 ```
+
+> **Note:** CORS and security headers should be handled by your FastAPI application, not in NPM. This minimal configuration only sets timeouts for long-running API calls and ensures proper proxy headers are forwarded. Adding complex `if` blocks or header directives in NPM's Advanced tab can break SSL/TLS handling.
 
 **Click:** Save
 

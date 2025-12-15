@@ -44,7 +44,8 @@ class ClaudeService:
             raise ValueError("ANTHROPIC_API_KEY not found in environment or provided")
 
         self.client = Anthropic(api_key=self.api_key)
-        self.model = "claude-3-5-sonnet-20241022"  # Latest Sonnet model
+        # Try claude-3-haiku which should be available on all accounts
+        self.model = "claude-3-haiku-20240307"
         self.max_tokens = 2048
 
     def _call_claude(

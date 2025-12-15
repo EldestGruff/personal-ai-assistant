@@ -34,6 +34,7 @@ COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 COPY docker-entrypoint.sh .
+COPY web/ ./web/
 
 # Make entrypoint executable and create non-root user
 RUN chmod +x docker-entrypoint.sh && \
