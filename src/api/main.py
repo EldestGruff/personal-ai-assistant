@@ -23,7 +23,8 @@ from .routes import (
     health_router,
     thoughts_router,
     tasks_router,
-    claude_router
+    claude_router,
+    consciousness_v2_router
 )
 from ..services.exceptions import ServiceError
 
@@ -112,6 +113,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(thoughts_router, prefix="/api/v1")
 app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(claude_router, prefix="/api/v1")
+app.include_router(consciousness_v2_router, prefix="/api/v1")
 
 # Mount static files for web dashboard
 # Look for web directory relative to this file
@@ -144,11 +146,116 @@ async def startup_event():
     print("📝 API Documentation: http://localhost:8000/docs")
     print("❤️  Health Check: http://localhost:8000/api/v1/health")
 
+    # Initialize backend system (Phase 2B)
+    await initialize_backend_system()
+
     # Start the background scheduler
     from ..services.scheduler_service import get_scheduler
     scheduler = get_scheduler()
     scheduler.start_consciousness_check_schedule()
     print("⏰ Background scheduler started")
+
+
+async def initialize_backend_system():
+    """
+    Initialize AI backends, orchestration, and metrics.
+    
+    Sets up:
+    - Backend registry with available backends
+    - Backend selector for choosing backends
+    - Backend orchestrator for execution with fallback
+    - Thought analyzer for high-level analysis
+    - Metrics collector for performance tracking
+    """
+    from ..services.ai_backends import AIBackendRegistry
+    from ..services.ai_backends.claude_backend import ClaudeBackend
+    from ..services.ai_backends.ollama_backend import OllamaBackend
+    from ..services.ai_backends.mock_backend import MockBackend
+    from ..services.backend_selection.config import BackendConfig
+    from ..services.backend_selection.default_selector import DefaultSelector
+    from ..services.backend_selection.orchestrator import BackendOrchestrator
+    from ..services.thought_analyzer import ThoughtAnalyzer
+    from ..services.metrics import BackendMetrics
+    
+    print("🔧 Initializing backend system...")
+    
+    # Load configuration from environment
+    config = BackendConfig.from_env()
+    print(f"   Primary backend: {config.primary_backend}")
+    print(f"   Secondary backend: {config.secondary_backend}")
+    print(f"   Strategy: {config.selection_strategy}")
+    
+    # Create registry
+    registry = AIBackendRegistry()
+    
+    # Register Claude if available
+    if config.is_backend_available("claude"):
+        if config.claude_api_key:
+            try:
+                claude = ClaudeBackend(api_key=config.claude_api_key)
+                registry.register("claude", claude)
+                print("   ✅ Claude backend registered")
+            except Exception as e:
+                print(f"   ⚠️  Claude backend failed to initialize: {e}")
+        else:
+            print("   ⚠️  Claude backend enabled but no API key found")
+    
+    # Register Ollama if available
+    if config.is_backend_available("ollama"):
+        try:
+            ollama = OllamaBackend(
+                base_url=config.ollama_base_url,
+                model=config.ollama_model
+            )
+            registry.register("ollama", ollama)
+            print(f"   ✅ Ollama backend registered ({config.ollama_model})")
+        except Exception as e:
+            print(f"   ⚠️  Ollama backend failed to initialize: {e}")
+    
+    # Register Mock backend if available
+    if config.is_backend_available("mock"):
+        try:
+            mock = MockBackend(mode="mock-success")
+            registry.register("mock", mock)
+            print("   ✅ Mock backend registered")
+        except Exception as e:
+            print(f"   ⚠️  Mock backend failed to initialize: {e}")
+    
+    # Verify at least one backend is available
+    available = registry.list_backends()
+    if not available:
+        print("   ❌ ERROR: No backends available!")
+        print("   Set ANTHROPIC_API_KEY or configure Ollama to enable backends")
+        # Continue anyway for graceful degradation
+    else:
+        print(f"   Total available backends: {len(available)}")
+    
+    # Create selector and orchestrator
+    selector = DefaultSelector(config)
+    orchestrator = BackendOrchestrator(registry, selector)
+    print("   ✅ Orchestrator configured")
+    
+    # Create analyzer
+    analyzer = ThoughtAnalyzer(orchestrator)
+    print("   ✅ ThoughtAnalyzer ready")
+    
+    # Create metrics
+    metrics = BackendMetrics()
+    print("   ✅ Metrics collector initialized")
+    
+    # Store in app state for dependency injection
+    app.state.backend_registry = registry
+    app.state.orchestrator = orchestrator
+    app.state.analyzer = analyzer
+    app.state.metrics = metrics
+    
+    # Wire up consciousness_v2 endpoint dependencies
+    from .routes import consciousness_v2
+    consciousness_v2.set_analyzer(analyzer)
+    consciousness_v2.set_metrics(metrics)
+    print("   ✅ Consciousness v2 endpoint wired up")
+    
+    print("✅ Backend system initialized successfully")
 
 
 # Shutdown event
