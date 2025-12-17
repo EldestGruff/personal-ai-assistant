@@ -18,26 +18,46 @@ from ..models.base import Base
 # Get database URL from environment or use default SQLite file
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
-# Create SQLAlchemy engine
-# For SQLite: 
-# - check_same_thread=False allows multiple threads (FastAPI is async)
-# - connect_args only used for SQLite
-connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+# Determine if using PostgreSQL or SQLite
+IS_POSTGRES = DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://")
+IS_SQLITE = "sqlite" in DATABASE_URL
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-    echo=False,  # Set to True for SQL query logging in development
-    pool_pre_ping=True,  # Verify connections before using them
-)
+# Create SQLAlchemy engine with appropriate settings
+if IS_POSTGRES:
+    # PostgreSQL-specific configuration
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,  # Set to True for SQL query logging
+        pool_pre_ping=True,  # Verify connections before using
+        pool_size=5,  # Connection pool size
+        max_overflow=10,  # Max overflow connections
+        pool_recycle=3600,  # Recycle connections after 1 hour
+    )
+elif IS_SQLITE:
+    # SQLite-specific configuration
+    connect_args = {"check_same_thread": False}
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+        echo=False,
+        pool_pre_ping=True,
+    )
+else:
+    # Fallback for other databases
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+    )
 
 
 # Enable foreign key constraints for SQLite
 # SQLite doesn't enforce foreign keys by default
+# PostgreSQL enforces them automatically
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_conn, connection_record):
     """Enable foreign key constraints for SQLite connections."""
-    if "sqlite" in DATABASE_URL:
+    if IS_SQLITE:
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()

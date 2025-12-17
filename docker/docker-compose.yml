@@ -1,53 +1,79 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: personal-ai-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-andy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-personal_ai}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+      TZ: America/New_York
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andy} -d ${POSTGRES_DB:-personal_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # FastAPI Application
   api:
     build:
       context: ..
-      dockerfile: Dockerfile
-    container_name: personal-ai-assistant-api
-    restart: unless-stopped
+      dockerfile: docker/Dockerfile
+    container_name: personal-ai-api
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://${POSTGRES_USER:-andy}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-personal_ai}
+      
+      # API Configuration
+      API_KEY: ${API_KEY:-test-api-key-123}
+      
+      # AI Backend Configuration
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AVAILABLE_BACKENDS: ${AVAILABLE_BACKENDS:-claude,ollama,mock}
+      PRIMARY_BACKEND: ${PRIMARY_BACKEND:-claude}
+      SECONDARY_BACKEND: ${SECONDARY_BACKEND:-ollama}
+      BACKEND_SELECTION_STRATEGY: ${BACKEND_SELECTION_STRATEGY:-sequential}
+      
+      # Ollama Configuration
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://192.168.7.187:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:latest}
+      
+      # Application Settings
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
     ports:
       - "8000:8000"
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-aiassistant}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aiassistant}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - API_KEY=${API_KEY}
-      - HOST=0.0.0.0
-      - PORT=8000
-      - DEBUG=${DEBUG:-false}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    networks:
-      - ai-assistant-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  db:
-    image: postgres:15-alpine
-    container_name: personal-ai-assistant-db
     restart: unless-stopped
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-aiassistant}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB:-aiassistant}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    volumes:
-      - /mnt/data2-pool/andy-ai/postgres:/var/lib/postgresql/data
     networks:
-      - ai-assistant-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiassistant} -d ${POSTGRES_DB:-aiassistant}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - app-network
+    volumes:
+      # Mount for logs (optional)
+      - ./logs:/app/logs
 
 networks:
-  ai-assistant-network:
+  app-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
