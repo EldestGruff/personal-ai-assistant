@@ -222,7 +222,7 @@ async def initialize_backend_system():
             print(f"   ⚠️  Mock backend failed to initialize: {e}")
     
     # Verify at least one backend is available
-    available = registry.list_backends()
+    available = registry.list_available()
     if not available:
         print("   ❌ ERROR: No backends available!")
         print("   Set ANTHROPIC_API_KEY or configure Ollama to enable backends")
