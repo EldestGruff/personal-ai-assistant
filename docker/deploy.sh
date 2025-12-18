@@ -23,10 +23,10 @@ if [ "$TARGET" = "local" ]; then
     
     # Build and start
     echo "🔨 Building Docker images..."
-    docker-compose build
+    docker compose build
     
     echo "▶️  Starting services..."
-    docker-compose up -d
+    docker compose up -d
     
     echo "⏳ Waiting for services to be healthy..."
     sleep 10
@@ -34,7 +34,7 @@ if [ "$TARGET" = "local" ]; then
     echo "🏥 Checking health..."
     curl -f http://localhost:8000/api/v1/health || {
         echo "❌ Health check failed"
-        docker-compose logs
+        docker compose logs
         exit 1
     }
     
@@ -42,7 +42,7 @@ if [ "$TARGET" = "local" ]; then
     echo "✅ Deployment successful!"
     echo "📝 API Documentation: http://localhost:8000/docs"
     echo "❤️  Health Check: http://localhost:8000/api/v1/health"
-    echo "📊 View logs: docker-compose logs -f"
+    echo "📊 View logs: docker compose logs -f"
     
 elif [ "$TARGET" = "moria" ]; then
     echo "📦 Deploying to TrueNAS SCALE (moria)..."
@@ -93,15 +93,15 @@ elif [ "$TARGET" = "moria" ]; then
         # Stop services
         echo "⏹️  Stopping services..."
         cd docker
-        docker-compose down || true
+        docker compose down || true
         
         # Build new images
         echo "🔨 Building Docker images..."
-        docker-compose build --no-cache
+        docker compose build --no-cache
         
         # Start services
         echo "▶️  Starting services..."
-        docker-compose up -d
+        docker compose up -d
         
         echo "⏳ Waiting for services..."
         sleep 15
@@ -111,8 +111,8 @@ EOF
     
     echo ""
     echo "✅ Deployment to moria successful!"
-    echo "🔍 Check status: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker-compose ps'"
-    echo "📝 View logs: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker-compose logs -f'"
+    echo "🔍 Check status: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker compose ps'"
+    echo "📝 View logs: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker compose logs -f'"
     echo "🏥 Health check: curl http://moria:8000/api/v1/health"
     
     # Cleanup local package
