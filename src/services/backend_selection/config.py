@@ -72,6 +72,14 @@ class BackendConfig(BaseModel):
         default="gemma3:27b",
         description="Ollama model to use"
     )
+    lmstudio_base_url: str = Field(
+        default="http://192.168.7.187:1234/v1",
+        description="LM Studio server URL (OpenAI-compatible endpoint)"
+    )
+    lmstudio_model: str = Field(
+        default="local-model",
+        description="LM Studio model to use"
+    )
     
     @field_validator("selection_strategy")
     @classmethod
@@ -125,7 +133,9 @@ class BackendConfig(BaseModel):
         claude_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
         ollama_url = os.getenv("OLLAMA_BASE_URL", "http://192.168.7.187:11434")
         ollama_model = os.getenv("OLLAMA_MODEL", "gemma3:27b")
-        
+        lmstudio_url = os.getenv("LMSTUDIO_BASE_URL", "http://192.168.7.187:1234/v1")
+        lmstudio_model = os.getenv("LMSTUDIO_MODEL", "local-model")
+
         return cls(
             available_backends=available,
             primary_backend=primary,
@@ -134,6 +144,8 @@ class BackendConfig(BaseModel):
             claude_api_key=claude_key,
             ollama_base_url=ollama_url,
             ollama_model=ollama_model,
+            lmstudio_base_url=lmstudio_url,
+            lmstudio_model=lmstudio_model,
         )
     
     def is_backend_available(self, backend_name: str) -> bool:
@@ -170,6 +182,7 @@ class BackendConfig(BaseModel):
         timeouts = {
             "claude": 30,      # Claude API is fast
             "ollama": 60,      # Large local models need time
+            "lmstudio": 45,    # LM Studio with GPU acceleration
             "mock": 5,         # Mock is instant
         }
         return timeouts.get(backend_name, 30)

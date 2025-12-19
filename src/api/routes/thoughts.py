@@ -47,18 +47,20 @@ router = APIRouter(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_thought(
     thought: ThoughtCreate,
+    auto_tag: bool = Query(default=True, description="Automatically suggest tags using AI"),
     api_key: str = Depends(verify_api_key),
     db: Session = Depends(get_db)
 ):
     """
     Capture a new thought.
-    
+
     Takes thought content, tags, context and persists to database.
-    Returns created thought with generated ID and timestamps.
-    
+    Optionally auto-suggests tags using AI if no tags provided.
+
     Args:
         thought: Thought data (content, tags, context)
-        
+        auto_tag: If True and no tags provided, AI will suggest tags (default: True)
+
     Returns:
         201 Created: ThoughtResponse with id, created_at, updated_at
         400 Bad Request: If content invalid
@@ -66,20 +68,56 @@ async def create_thought(
     """
     try:
         user_id = UUID(get_current_user_id())
-        
+
         service = ThoughtService(db)
+
+        # Auto-tag if enabled and no tags provided
+        tags_to_use = thought.tags
+        if auto_tag and (not tags_to_use or len(tags_to_use) == 0):
+            try:
+                # Get existing tags for context
+                all_thoughts, _ = service.list_thoughts(
+                    user_id=user_id,
+                    limit=100,
+                    offset=0
+                )
+
+                existing_tags = set()
+                for t in all_thoughts:
+                    if t.tags:
+                        existing_tags.update(t.tags)
+
+                # Call AI for tag suggestions
+                from ...services.claude_service import ClaudeService
+                claude = ClaudeService()
+                result = claude.suggest_tags(
+                    thought_content=thought.content,
+                    existing_tags=list(existing_tags) if existing_tags else None
+                )
+
+                # Use suggested tags
+                tags_to_use = result.get("suggested_tags", [])
+                if tags_to_use:
+                    logger.info(f"Auto-tagged thought with: {tags_to_use}")
+
+            except Exception as e:
+                # Don't fail the whole request if tagging fails
+                logger.warning(f"Auto-tagging failed, continuing without tags: {e}")
+                tags_to_use = thought.tags or []
+
+        # Create thought with final tags
         thought_db = service.create_thought(
             user_id=user_id,
             content=thought.content,
-            tags=thought.tags,
+            tags=tags_to_use,
             context=thought.context
         )
-        
+
         return APIResponse.success(
             data=thought_db.to_response().model_dump(mode='json'),
             status_code=status.HTTP_201_CREATED
         )
-        
+
     except InvalidDataError as e:
         logger.warning(f"Invalid thought data: {e}")
         raise InvalidContentError(str(e))

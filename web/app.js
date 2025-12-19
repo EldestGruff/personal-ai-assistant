@@ -107,9 +107,21 @@ const api = {
     },
 
     async getConsciousnessCheck(limitRecent = 20) {
-        const response = await this.request(`/consciousness/check`, {
+        // Use the v2 endpoint with backend orchestration
+        // Need to fetch thoughts first, then send to v2 endpoint
+        const allThoughts = await this.getThoughts();
+        const recentThoughts = allThoughts.slice(0, limitRecent);
+
+        // Convert to ThoughtRef format for v2 API
+        const thoughtRefs = recentThoughts.map(t => ({
+            id: t.id,
+            content: t.content
+        }));
+
+        const response = await this.request(`/consciousness-check-v2`, {
             method: 'POST',
             body: JSON.stringify({
+                recent_thoughts: thoughtRefs,
                 limit_recent: limitRecent,
                 include_archived: false
             })
@@ -233,7 +245,7 @@ const ui = {
             // New v2 endpoint - always fetch fresh analysis
             const response = await api.getConsciousnessCheck(20);
 
-            if (!response || !response.analysis || !response.analysis.summary) {
+            if (!response || !response.success) {
                 container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Waiting for first analysis');
                 state.consciousnessCheck.isLoading = false;
                 return;
@@ -314,50 +326,39 @@ const ui = {
 
     displayClaudeInsightsV2(response) {
         const container = document.getElementById('claude-insights');
-        const analysis = response.analysis;
-        const metadata = response.metadata;
+
+        // Extract backend stats for the backend that was used
+        const backendStats = response.backend_stats || {};
+        const backendName = Object.keys(backendStats)[0] || 'unknown';
+        const stats = backendStats[backendName] || {};
 
         container.innerHTML = `
             <div class="insights-content">
                 <div class="insights-summary">
-                    <p>${this.escapeHtml(analysis.summary)}</p>
+                    <p>${this.escapeHtml(response.summary || 'No summary available')}</p>
                     <div class="insights-meta">
-                        <span>🤖 ${analysis.backend_used}</span>
-                        <span>⚡ ${metadata.tokens_used} tokens</span>
-                        <span>⏱️ ${metadata.processing_time_ms}ms</span>
-                        <span>🕒 ${utils.timeAgo(metadata.timestamp)}</span>
+                        <span>🤖 ${backendName}</span>
+                        <span>📊 ${response.source_analyses || 0} thoughts analyzed</span>
+                        <span>⚡ ${stats.total_tokens || 0} tokens</span>
+                        <span>🕒 ${utils.timeAgo(response.timestamp)}</span>
                     </div>
                 </div>
 
-                ${analysis.themes && analysis.themes.length > 0 ? `
+                ${response.themes && response.themes.length > 0 ? `
                     <div class="insights-section">
                         <h4>🎯 Key Themes</h4>
                         <div class="insights-tags">
-                            ${analysis.themes.map(theme => {
-                                const themeText = typeof theme === 'string' ? theme : theme.theme;
-                                return `<span class="insight-tag theme-tag">${this.escapeHtml(themeText)}</span>`;
-                            }).join('')}
+                            ${response.themes.map(theme => `<span class="insight-tag theme-tag">${this.escapeHtml(theme)}</span>`).join('')}
                         </div>
                     </div>
                 ` : ''}
 
-                ${analysis.suggested_actions && analysis.suggested_actions.length > 0 ? `
+                ${response.suggested_actions && response.suggested_actions.length > 0 ? `
                     <div class="insights-section">
                         <h4>💡 Suggested Actions</h4>
                         <ul class="insights-list">
-                            ${analysis.suggested_actions.map(action => {
-                                const actionText = typeof action === 'string' ? action : action.action;
-                                const priority = typeof action === 'object' && action.priority ? `<span class="priority-badge ${action.priority}">${action.priority}</span>` : '';
-                                return `<li>${this.escapeHtml(actionText)} ${priority}</li>`;
-                            }).join('')}
+                            ${response.suggested_actions.map(action => `<li>${this.escapeHtml(action)}</li>`).join('')}
                         </ul>
-                    </div>
-                ` : ''}
-
-                ${analysis.related_thought_ids && analysis.related_thought_ids.length > 0 ? `
-                    <div class="insights-section">
-                        <h4>🔗 Related Thoughts</h4>
-                        <p>${analysis.related_thought_ids.length} related thoughts found</p>
                     </div>
                 ` : ''}
             </div>
