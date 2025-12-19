@@ -75,45 +75,50 @@ elif [ "$TARGET" = "moria" ]; then
     echo "🚀 Deploying on moria..."
     ssh andy@moria << 'EOF'
         set -e
-        cd /mnt/tank/andy-ai/app
-        
+        cd /mnt/data2-pool/andy-ai/app
+
         # Backup current version
         if [ -d "src" ]; then
             echo "💾 Backing up current version..."
             cd ..
             tar -czf backup_$(date +%Y%m%d_%H%M%S).tar.gz app/
         fi
-        
+
         # Extract new version
         echo "📦 Extracting new version..."
-        cd /mnt/tank/andy-ai/app
+        cd /mnt/data2-pool/andy-ai/app
         tar -xzf /tmp/personal-ai-assistant.tar.gz
         rm /tmp/personal-ai-assistant.tar.gz
-        
+
         # Stop services
         echo "⏹️  Stopping services..."
         cd docker
         docker compose down || true
-        
+
         # Build new images
         echo "🔨 Building Docker images..."
         docker compose build --no-cache
-        
+
         # Start services
         echo "▶️  Starting services..."
         docker compose up -d
-        
+
         echo "⏳ Waiting for services..."
         sleep 15
-        
+
+        # Fix web directory permissions (workaround for UID mismatch)
+        echo "🔧 Fixing web directory permissions..."
+        docker exec -u root personal-ai-api chmod -R 755 /app/web
+
         echo "✅ Deployment complete!"
 EOF
     
     echo ""
     echo "✅ Deployment to moria successful!"
-    echo "🔍 Check status: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker compose ps'"
-    echo "📝 View logs: ssh andy@moria 'cd /mnt/tank/andy-ai/app/docker && docker compose logs -f'"
+    echo "🔍 Check status: ssh andy@moria 'cd /mnt/data2-pool/andy-ai/app/docker && docker compose ps'"
+    echo "📝 View logs: ssh andy@moria 'cd /mnt/data2-pool/andy-ai/app/docker && docker compose logs -f'"
     echo "🏥 Health check: curl http://moria:8000/api/v1/health"
+    echo "🌐 Dashboard: http://moria:8000/dashboard/"
     
     # Cleanup local package
     rm personal-ai-assistant.tar.gz
