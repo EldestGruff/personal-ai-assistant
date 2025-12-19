@@ -40,7 +40,9 @@ COPY . .
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \
-    chmod -R 755 /app/web
+    chmod -R 755 /app && \
+    find /app/web -type f -exec chmod 644 {} \; && \
+    find /app/web -type d -exec chmod 755 {} \;
 
 # Switch to non-root user
 USER appuser
