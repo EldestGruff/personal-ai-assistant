@@ -77,11 +77,14 @@ elif [ "$TARGET" = "moria" ]; then
         set -e
         cd /mnt/data2-pool/andy-ai/app
 
-        # Backup current version
+        # Backup current version (exclude postgres data and other runtime files)
         if [ -d "src" ]; then
             echo "💾 Backing up current version..."
             cd ..
-            tar -czf backup_$(date +%Y%m%d_%H%M%S).tar.gz app/
+            tar --exclude='app/docker/postgres_data' \
+                --exclude='app/**/*.db' \
+                --exclude='app/**/__pycache__' \
+                -czf backup_$(date +%Y%m%d_%H%M%S).tar.gz app/ 2>/dev/null || true
         fi
 
         # Extract new version
@@ -90,19 +93,21 @@ elif [ "$TARGET" = "moria" ]; then
         tar -xzf /tmp/personal-ai-assistant.tar.gz
         rm /tmp/personal-ai-assistant.tar.gz
 
+        # Stop services first
+        echo "⏹️  Stopping services..."
+        cd docker
+        docker compose down || true
+
+        # Remove postgres_data to avoid permission issues during build
+        echo "🧹 Cleaning postgres data directory..."
+        sudo rm -rf postgres_data || true
+
         # Ensure .env exists
         echo "📝 Checking environment configuration..."
-        cd docker
         if [ ! -f .env ]; then
             echo "⚙️  Creating .env from template..."
             cp .env.production .env
-            # Set matching API key from web config
-            sed -i 's/^API_KEY=.*/API_KEY=ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03/' .env
         fi
-
-        # Stop services
-        echo "⏹️  Stopping services..."
-        docker compose down || true
 
         # Build new images
         echo "🔨 Building Docker images..."
