@@ -90,9 +90,18 @@ elif [ "$TARGET" = "moria" ]; then
         tar -xzf /tmp/personal-ai-assistant.tar.gz
         rm /tmp/personal-ai-assistant.tar.gz
 
+        # Ensure .env exists
+        echo "📝 Checking environment configuration..."
+        cd docker
+        if [ ! -f .env ]; then
+            echo "⚙️  Creating .env from template..."
+            cp .env.production .env
+            # Set matching API key from web config
+            sed -i 's/^API_KEY=.*/API_KEY=ad8c1f1e-bad4-4f6b-a4ac-a7674bf1ce03/' .env
+        fi
+
         # Stop services
         echo "⏹️  Stopping services..."
-        cd docker
         docker compose down || true
 
         # Build new images
