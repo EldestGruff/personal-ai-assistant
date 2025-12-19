@@ -37,21 +37,9 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY . .
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser
-
-# Fix ownership and permissions for all app files
-# Note: Source files may have different UID from host, so we need to force ownership change
-RUN chown -R appuser:appuser /app && \
-    chmod -R 755 /app
-
-# Make web directory world-readable as fallback for UID mismatches
-RUN if [ -d /app/web ]; then \
-        chmod -R a+rX /app/web ; \
-    fi
-
-# Switch to non-root user
-USER appuser
+# Fix permissions for all app files
+# Run as root to avoid UID mismatch issues between dev machine and deployment
+RUN chmod -R 755 /app
 
 # Expose port
 EXPOSE 8000
