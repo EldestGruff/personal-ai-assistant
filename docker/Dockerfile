@@ -38,15 +38,16 @@ ENV PATH=/root/.local/bin:$PATH
 COPY . .
 
 # Create non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app && \
+RUN useradd -m -u 1000 appuser
+
+# Fix ownership and permissions for all app files
+# Note: Source files may have different UID from host, so we need to force ownership change
+RUN chown -R appuser:appuser /app && \
     chmod -R 755 /app
 
-# Ensure web directory is readable (fix UID mismatch issues)
+# Make web directory world-readable as fallback for UID mismatches
 RUN if [ -d /app/web ]; then \
-        chown -R appuser:appuser /app/web && \
-        chmod -R 755 /app/web && \
-        find /app/web -type f -exec chmod 644 {} \; ; \
+        chmod -R a+rX /app/web ; \
     fi
 
 # Switch to non-root user
