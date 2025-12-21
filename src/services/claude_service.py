@@ -144,7 +144,7 @@ class ClaudeService:
         # Build thought list for Claude
         thought_list = []
         for i, thought in enumerate(thoughts, 1):
-            timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M")
+            timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M") if thought.created_at else "unknown"
             tags = ", ".join(thought.tags) if thought.tags else "none"
             thought_list.append(
                 f"{i}. [{timestamp}] {thought.content}\n   Tags: {tags}"
@@ -285,7 +285,7 @@ Format response as JSON:
         # Build thought list
         thought_list = []
         for i, thought in enumerate(thoughts, 1):
-            timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M")
+            timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M") if thought.created_at else "unknown"
             thought_list.append(f"{i}. [{timestamp}] {thought.content}")
 
         thoughts_text = "\n".join(thought_list)
@@ -387,7 +387,7 @@ Format as JSON:
     "action_suggestion": "Optional task title if actionable"
 }"""
 
-        timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M")
+        timestamp = thought.created_at.strftime("%Y-%m-%d %H:%M") if thought.created_at else "unknown"
         existing_tags = ", ".join(thought.tags) if thought.tags else "none"
 
         user_message = f"""Analyze this thought:
