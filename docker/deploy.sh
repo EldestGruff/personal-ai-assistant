@@ -98,9 +98,12 @@ elif [ "$TARGET" = "moria" ]; then
         cd docker
         docker compose down || true
 
-        # Remove postgres_data to avoid permission issues during build
-        echo "🧹 Cleaning postgres data directory..."
-        sudo rm -rf postgres_data || true
+        # Check if this is first deployment (no postgres_data exists)
+        FIRST_DEPLOY=false
+        if [ ! -d "postgres_data" ]; then
+            echo "🆕 First deployment detected"
+            FIRST_DEPLOY=true
+        fi
 
         # Ensure .env exists
         echo "📝 Checking environment configuration..."
@@ -118,11 +121,20 @@ elif [ "$TARGET" = "moria" ]; then
         docker compose up -d
 
         echo "⏳ Waiting for services..."
-        sleep 15
+        sleep 20
+
+        # If first deployment, initialize database
+        if [ "$FIRST_DEPLOY" = true ]; then
+            echo "🗄️  Initializing database schema..."
+            cat ../docker/create-schema.sql | docker compose exec -T postgres psql -U andy -d personal_ai
+
+            echo "👤 Creating default user..."
+            docker compose exec -T postgres psql -U andy -d personal_ai -c "INSERT INTO users (id, name, email, created_at, updated_at, preferences, is_active) VALUES ('550e8400-e29b-41d4-a716-446655440000', 'Andy', 'andy@example.com', NOW(), NOW(), '{}', true) ON CONFLICT DO NOTHING;"
+        fi
 
         # Fix web directory permissions (workaround for UID mismatch)
         echo "🔧 Fixing web directory permissions..."
-        docker exec -u root personal-ai-api chmod -R 755 /app/web
+        docker compose exec -u root api chmod -R 755 /app/web
 
         echo "✅ Deployment complete!"
 EOF
