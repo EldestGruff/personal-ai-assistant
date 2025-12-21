@@ -227,6 +227,43 @@ class ClaudeAnalysisService:
                 original_error=e
             )
     
+    def get_latest_by_type(
+        self,
+        user_id: UUID,
+        analysis_type: AnalysisType
+    ) -> Optional[ClaudeAnalysisDB]:
+        """
+        Get the most recent analysis of a specific type.
+
+        Args:
+            user_id: UUID of the user
+            analysis_type: Type of analysis to retrieve
+
+        Returns:
+            ClaudeAnalysisDB: Most recent analysis or None if not found
+
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            analysis = self.db.query(ClaudeAnalysisDB).filter(
+                and_(
+                    ClaudeAnalysisDB.user_id == str(user_id),
+                    ClaudeAnalysisDB.analysis_type == analysis_type.value
+                )
+            ).order_by(
+                ClaudeAnalysisDB.created_at.desc()
+            ).first()
+
+            return analysis
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting latest analysis by type: {e}")
+            raise DatabaseError(
+                "Failed to get latest analysis due to database error",
+                original_error=e
+            )
+
     def get_total_tokens_used(
         self,
         user_id: UUID,
@@ -234,16 +271,16 @@ class ClaudeAnalysisService:
     ) -> int:
         """
         Calculate total API tokens used.
-        
+
         Useful for cost tracking and usage monitoring.
-        
+
         Args:
             user_id: UUID of the user
             analysis_type: Optional filter by analysis type
-            
+
         Returns:
             int: Total tokens used
-            
+
         Raises:
             DatabaseError: If database operation fails
         """
@@ -253,20 +290,20 @@ class ClaudeAnalysisService:
             ).filter(
                 ClaudeAnalysisDB.user_id == str(user_id)
             )
-            
+
             if analysis_type:
                 query = query.filter(
                     ClaudeAnalysisDB.analysis_type == analysis_type.value
                 )
-            
+
             # Sum tokens_used column
             from sqlalchemy import func
             total = query.with_entities(
                 func.sum(ClaudeAnalysisDB.tokens_used)
             ).scalar() or 0
-            
+
             return total
-            
+
         except SQLAlchemyError as e:
             logger.error(f"Database error calculating total tokens: {e}")
             raise DatabaseError(

@@ -130,9 +130,17 @@ const api = {
     },
 
     async getLatestConsciousnessCheck() {
-        // For now, just do a fresh check (no "latest" endpoint yet)
-        // This will use cached backend selection and be fast
-        return await this.getConsciousnessCheck(20);
+        // Get the latest scheduled consciousness check from database
+        const response = await this.request('/consciousness/latest');
+        return response;
+    },
+
+    async triggerConsciousnessCheck() {
+        // Manually trigger a consciousness check to run in background
+        const response = await this.request('/consciousness/trigger', {
+            method: 'POST'
+        });
+        return response;
     }
 };
 
@@ -237,16 +245,29 @@ const ui = {
         container.innerHTML = `
             <div class="insights-loading">
                 <div class="spinner-small"></div>
-                <span>${forceRefresh ? 'Analyzing your recent thoughts...' : 'Loading latest insights...'}</span>
+                <span>${forceRefresh ? 'Triggering new analysis...' : 'Loading latest insights...'}</span>
             </div>
         `;
 
         try {
-            // New v2 endpoint - always fetch fresh analysis
-            const response = await api.getConsciousnessCheck(20);
+            if (forceRefresh) {
+                // Manually trigger a new consciousness check
+                await api.triggerConsciousnessCheck();
+                // Wait a bit for it to process, then fetch latest
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
 
-            if (!response || !response.success) {
-                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Waiting for first analysis');
+            // Get latest scheduled consciousness check from database
+            const response = await api.getLatestConsciousnessCheck();
+
+            if (!response || !response.has_check) {
+                container.innerHTML = `
+                    <div class="insights-empty">
+                        <p>🤖 No insights yet</p>
+                        <p class="text-muted">First consciousness check runs automatically every 30 minutes</p>
+                        <button onclick="ui.renderClaudeInsights(true)" class="btn-secondary">Trigger Now</button>
+                    </div>
+                `;
                 state.consciousnessCheck.isLoading = false;
                 return;
             }
@@ -255,8 +276,8 @@ const ui = {
             state.consciousnessCheck.lastCheck = response;
             state.consciousnessCheck.isLoading = false;
 
-            // Display the insights (new v2 format)
-            this.displayClaudeInsightsV2(response);
+            // Display the insights (database format)
+            this.displayClaudeInsightsFromDB(response);
 
         } catch (error) {
             console.error('Failed to load Claude insights:', error);
@@ -317,6 +338,44 @@ const ui = {
                         <h4>⚠️ Concerns</h4>
                         <ul class="insights-list">
                             ${insights.concerns.map(concern => `<li>${this.escapeHtml(concern)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    displayClaudeInsightsFromDB(response) {
+        const container = document.getElementById('claude-insights');
+
+        container.innerHTML = `
+            <div class="insights-content">
+                <div class="insights-header">
+                    <h3>🧠 Latest Insights</h3>
+                    <button onclick="ui.renderClaudeInsights(true)" class="btn-refresh" title="Refresh insights">🔄</button>
+                </div>
+                <div class="insights-summary">
+                    <p>${this.escapeHtml(response.summary || 'No summary available')}</p>
+                    <div class="insights-meta">
+                        <span>⚡ ${response.tokens_used || 0} tokens</span>
+                        <span>🕒 ${utils.timeAgo(response.created_at)}</span>
+                    </div>
+                </div>
+
+                ${response.themes && response.themes.length > 0 ? `
+                    <div class="insights-section">
+                        <h4>🎯 Key Themes</h4>
+                        <div class="insights-tags">
+                            ${response.themes.map(theme => `<span class="insight-tag theme-tag">${this.escapeHtml(theme)}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${response.suggested_actions && response.suggested_actions.length > 0 ? `
+                    <div class="insights-section">
+                        <h4>💡 Suggested Actions</h4>
+                        <ul class="insights-list">
+                            ${response.suggested_actions.map(action => `<li>${this.escapeHtml(action)}</li>`).join('')}
                         </ul>
                     </div>
                 ` : ''}

@@ -24,7 +24,8 @@ from .routes import (
     thoughts_router,
     tasks_router,
     claude_router,
-    consciousness_v2_router
+    consciousness_v2_router,
+    consciousness_router
 )
 from ..services.exceptions import ServiceError
 
@@ -113,6 +114,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(thoughts_router, prefix="/api/v1")
 app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(claude_router, prefix="/api/v1")
+app.include_router(consciousness_router, prefix="/api/v1")
 app.include_router(consciousness_v2_router, prefix="/api/v1")
 
 # Mount static files for web dashboard

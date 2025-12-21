@@ -240,23 +240,31 @@ Format response as JSON:
 
         user_message = f"Thought: {thought_content}\n\nSuggest appropriate tags."
 
-        response = self._call_claude(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            temperature=0.5
-        )
-
-        import json
         try:
-            result = json.loads(response["content"])
-            result["tokens_used"] = response["tokens_input"] + response["tokens_output"]
-            return result
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse tag suggestions")
+            response = self._call_claude(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                temperature=0.5
+            )
+
+            import json
+            try:
+                result = json.loads(response["content"])
+                result["tokens_used"] = response["tokens_input"] + response["tokens_output"]
+                return result
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse tag suggestions")
+                return {
+                    "suggested_tags": [],
+                    "reasoning": "Failed to generate suggestions",
+                    "tokens_used": response.get("tokens_input", 0) + response.get("tokens_output", 0)
+                }
+        except Exception as e:
+            logger.warning(f"Tag suggestion failed: {e}")
             return {
                 "suggested_tags": [],
-                "reasoning": "Failed to generate suggestions",
-                "tokens_used": response["tokens_input"] + response["tokens_output"]
+                "reasoning": f"AI service unavailable: {str(e)}",
+                "tokens_used": 0
             }
 
     def extract_tasks(
