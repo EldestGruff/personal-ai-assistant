@@ -17,7 +17,7 @@ from ...services.thought_service import ThoughtService
 from ...services.claude_service import ClaudeService
 from ...services.claude_analysis_service import ClaudeAnalysisService
 from ...models.enums import AnalysisType, ThoughtStatus
-from ...api.response import APIResponse
+from ...api.responses import APIResponse
 
 logger = logging.getLogger(__name__)
 
