@@ -170,6 +170,7 @@ async def initialize_backend_system():
     from ..services.ai_backends import AIBackendRegistry
     from ..services.ai_backends.claude_backend import ClaudeBackend
     from ..services.ai_backends.ollama_backend import OllamaBackend
+    from ..services.ai_backends.lmstudio_backend import LMStudioBackend
     from ..services.ai_backends.mock_backend import MockBackend
     from ..services.backend_selection.config import BackendConfig
     from ..services.backend_selection.default_selector import DefaultSelector
@@ -211,6 +212,24 @@ async def initialize_backend_system():
             print(f"   ✅ Ollama backend registered ({config.ollama_model})")
         except Exception as e:
             print(f"   ⚠️  Ollama backend failed to initialize: {e}")
+
+    # Register LM Studio if available
+    if config.is_backend_available("lmstudio"):
+        try:
+            # We reuse OLLAMA_BASE_URL for now as there isn't a dedicated env var yet,
+            # or we can assume it uses the same one or a new one.
+            # Ideally we should add LMSTUDIO_BASE_URL to config.py, but to avoid changing too many files,
+            # we can use OLLAMA_BASE_URL (which we set to the LM Studio URL) or hardcode the default.
+            # Let's use the config.ollama_base_url since the user set that to the LM Studio URL.
+            
+            lmstudio = LMStudioBackend(
+                base_url=config.ollama_base_url, 
+                model=config.ollama_model
+            )
+            registry.register("lmstudio", lmstudio)
+            print(f"   ✅ LM Studio backend registered ({config.ollama_model})")
+        except Exception as e:
+            print(f"   ⚠️  LM Studio backend failed to initialize: {e}")
     
     # Register Mock backend if available
     if config.is_backend_available("mock"):

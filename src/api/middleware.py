@@ -40,8 +40,8 @@ class RateLimiter:
         
         # Rate limits (requests per minute)
         self.limits = {
-            "default": 100,  # General CRUD operations
-            "claude": 10,    # Claude API calls (expensive)
+            "default": 1000,  # General CRUD operations (relaxed for single user)
+            "claude": 60,     # Claude API calls (relaxed)
         }
     
     def _clean_old_requests(self, api_key: str, window_seconds: int = 60):
@@ -89,27 +89,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with rate limiting."""
+        # Rate limiting disabled for single-user instance
         # Extract API key from Authorization header
-        auth_header = request.headers.get("authorization", "")
-        api_key = "unknown"
-        if auth_header.startswith("Bearer "):
-            api_key = auth_header[7:]
+        # auth_header = request.headers.get("authorization", "")
+        # api_key = "unknown"
+        # if auth_header.startswith("Bearer "):
+        #     api_key = auth_header[7:]
         
         # Check rate limit
-        endpoint = request.url.path
-        allowed, limit, remaining = rate_limiter.check_rate_limit(api_key, endpoint)
+        # endpoint = request.url.path
+        # allowed, limit, remaining = rate_limiter.check_rate_limit(api_key, endpoint)
         
         # If rate limited, return error
-        if not allowed:
-            raise RateLimitError(retry_after=60)
+        # if not allowed:
+        #     raise RateLimitError(retry_after=60)
         
         # Process request
         response = await call_next(request)
         
-        # Add rate limit headers
-        response.headers["RateLimit-Limit"] = str(limit)
-        response.headers["RateLimit-Remaining"] = str(remaining)
-        response.headers["RateLimit-Reset"] = str(int(time.time()) + 60)
+        # Add rate limit headers (dummy values)
+        # response.headers["RateLimit-Limit"] = str(limit)
+        # response.headers["RateLimit-Remaining"] = str(remaining)
+        # response.headers["RateLimit-Reset"] = str(int(time.time()) + 60)
         
         return response
 

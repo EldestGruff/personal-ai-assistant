@@ -6,7 +6,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir fastapi uvicorn[standard]
 
 # Copy webhook receiver code
-COPY webhook_receiver.py /app/webhook/webhook_receiver.py
+COPY webhook/webhook_receiver.py /app/webhook/webhook_receiver.py
 
 # Expose port
 EXPOSE 9002

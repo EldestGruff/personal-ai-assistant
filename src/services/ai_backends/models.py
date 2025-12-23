@@ -47,8 +47,8 @@ class BackendRequest(BaseModel):
     timeout_seconds: int = Field(
         default=30,
         ge=5,
-        le=60,
-        description="Max time to wait for analysis (5-60 seconds)"
+        le=300,
+        description="Max time to wait for analysis (5-300 seconds)"
     )
     model_hint: Optional[str] = Field(
         default=None,

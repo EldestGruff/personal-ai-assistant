@@ -120,27 +120,25 @@ class OllamaBackend:
     async def _call_ollama(self, prompt: str) -> dict:
         """
         Make async HTTP call to Ollama chat API.
-        
-        Args:
-            prompt: Formatted prompt
-        
-        Returns:
-            dict: Ollama response
         """
         async with httpx.AsyncClient() as client:
+            payload = {
+                "model": self._model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                }
+            }
+            logger.info(f"Ollama Request URL: {self._chat_url}")
+            logger.debug(f"Ollama Payload: {json.dumps(payload)}")
+            
             response = await client.post(
                 self._chat_url,
-                json={
-                    "model": self._model,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.7,
-                        "top_p": 0.9,
-                    }
-                },
+                json=payload,
                 timeout=60.0
             )
             response.raise_for_status()

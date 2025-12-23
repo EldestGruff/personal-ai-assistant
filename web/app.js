@@ -107,9 +107,16 @@ const api = {
     },
 
     async getConsciousnessCheck(limitRecent = 20) {
-        const response = await this.request(`/consciousness/check`, {
+        // Map local state thoughts to the format expected by the API
+        const recentThoughts = state.thoughts.slice(0, limitRecent).map(t => ({
+            id: t.id,
+            content: t.content
+        }));
+
+        const response = await this.request(`/consciousness-check-v2`, {
             method: 'POST',
             body: JSON.stringify({
+                recent_thoughts: recentThoughts,
                 limit_recent: limitRecent,
                 include_archived: false
             })

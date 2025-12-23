@@ -75,7 +75,7 @@ elif [ "$TARGET" = "moria" ]; then
     echo "🚀 Deploying on moria..."
     ssh andy@moria << 'EOF'
         set -e
-        cd /mnt/tank/andy-ai/app
+        cd /mnt/data2-pool/andy-ai/app
         
         # Backup current version
         if [ -d "src" ]; then
@@ -86,7 +86,7 @@ elif [ "$TARGET" = "moria" ]; then
         
         # Extract new version
         echo "📦 Extracting new version..."
-        cd /mnt/tank/andy-ai/app
+        cd /mnt/data2-pool/andy-ai/app
         tar -xzf /tmp/personal-ai-assistant.tar.gz
         rm /tmp/personal-ai-assistant.tar.gz
         

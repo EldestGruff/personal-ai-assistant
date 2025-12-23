@@ -148,7 +148,9 @@ class ClaudeBackend:
             user_id=request.context.get("user_id", "unknown"),
             content=request.thought_content,
             tags=[],
-            status="active"
+            status="active",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         
         # Call existing ClaudeService

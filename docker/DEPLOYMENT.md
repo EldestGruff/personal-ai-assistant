@@ -67,12 +67,12 @@ Create ZFS dataset for persistence:
 sudo zfs create tank/andy-ai
 
 # Create subdirectories
-sudo mkdir -p /mnt/tank/andy-ai/postgres-data
-sudo mkdir -p /mnt/tank/andy-ai/logs
-sudo mkdir -p /mnt/tank/andy-ai/app
+sudo mkdir -p /mnt/data2-pool/andy-ai/postgres-data
+sudo mkdir -p /mnt/data2-pool/andy-ai/logs
+sudo mkdir -p /mnt/data2-pool/andy-ai/app
 
 # Set permissions
-sudo chown -R andy:andy /mnt/tank/andy-ai
+sudo chown -R andy:andy /mnt/data2-pool/andy-ai
 ```
 
 Configure snapshots for backups:
@@ -102,11 +102,11 @@ tar --exclude='venv' \
     -czf personal-ai-assistant.tar.gz .
 
 # Transfer to moria
-scp personal-ai-assistant.tar.gz andy@moria:/mnt/tank/andy-ai/
+scp personal-ai-assistant.tar.gz andy@moria:/mnt/data2-pool/andy-ai/
 
 # SSH into moria and extract
 ssh andy@moria
-cd /mnt/tank/andy-ai/app
+cd /mnt/data2-pool/andy-ai/app
 tar -xzf ../personal-ai-assistant.tar.gz
 rm ../personal-ai-assistant.tar.gz
 ```
@@ -116,7 +116,7 @@ rm ../personal-ai-assistant.tar.gz
 On moria, create `.env` file:
 
 ```bash
-cd /mnt/tank/andy-ai/app/docker
+cd /mnt/data2-pool/andy-ai/app/docker
 cp .env.example .env
 nano .env
 ```
@@ -152,7 +152,7 @@ ENVIRONMENT=production
 Edit `docker-compose.yml` to use ZFS-backed volumes:
 
 ```bash
-cd /mnt/tank/andy-ai/app/docker
+cd /mnt/data2-pool/andy-ai/app/docker
 nano docker-compose.yml
 ```
 
@@ -165,7 +165,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/tank/andy-ai/postgres-data
+      device: /mnt/data2-pool/andy-ai/postgres-data
 ```
 
 Update API service to mount logs:
@@ -174,13 +174,13 @@ Update API service to mount logs:
   api:
     # ... existing config ...
     volumes:
-      - /mnt/tank/andy-ai/logs:/app/logs
+      - /mnt/data2-pool/andy-ai/logs:/app/logs
 ```
 
 ### Step 5: Build and Deploy
 
 ```bash
-cd /mnt/tank/andy-ai/app/docker
+cd /mnt/data2-pool/andy-ai/app/docker
 
 # Build images
 docker-compose build --no-cache
@@ -303,10 +303,10 @@ zfs rollback tank/andy-ai@auto-2024-12-17-0000
 # On development machine - create new package
 cd ~/Dev/personal-ai-assistant
 tar --exclude='venv' --exclude='.git' -czf personal-ai-assistant.tar.gz .
-scp personal-ai-assistant.tar.gz andy@moria:/mnt/tank/andy-ai/
+scp personal-ai-assistant.tar.gz andy@moria:/mnt/data2-pool/andy-ai/
 
 # On moria - update and restart
-cd /mnt/tank/andy-ai/app
+cd /mnt/data2-pool/andy-ai/app
 docker-compose down
 cd ..
 rm -rf app/*
@@ -446,7 +446,7 @@ After=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/mnt/tank/andy-ai/app/docker
+WorkingDirectory=/mnt/data2-pool/andy-ai/app/docker
 ExecStart=/usr/bin/docker-compose up -d
 ExecStop=/usr/bin/docker-compose down
 User=andy
@@ -473,7 +473,7 @@ sudo systemctl status personal-ai.service
 - [ ] Migrations applied (`docker-compose exec api alembic current`)
 - [ ] API key works (`curl -H "Authorization: Bearer <key>" http://moria:8000/api/v1/thoughts`)
 - [ ] Backends available (`curl http://moria:8000/api/v1/health/backends`)
-- [ ] Logs directory created (`ls -la /mnt/tank/andy-ai/logs`)
+- [ ] Logs directory created (`ls -la /mnt/data2-pool/andy-ai/logs`)
 - [ ] ZFS snapshots enabled (`zfs get com.sun:auto-snapshot tank/andy-ai`)
 - [ ] Systemd service enabled (optional: `systemctl is-enabled personal-ai`)
 

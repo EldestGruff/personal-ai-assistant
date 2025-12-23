@@ -169,7 +169,8 @@ class BackendConfig(BaseModel):
         """
         timeouts = {
             "claude": 30,      # Claude API is fast
-            "ollama": 60,      # Large local models need time
+            "ollama": 120,     # Large local models need time (increased for 30b)
+            "lmstudio": 60,    # Local LLM via OpenAI API needs time
             "mock": 5,         # Mock is instant
         }
         return timeouts.get(backend_name, 30)
