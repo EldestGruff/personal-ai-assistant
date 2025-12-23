@@ -12,4 +12,4 @@ COPY webhook/webhook_receiver.py /app/webhook/webhook_receiver.py
 EXPOSE 9002
 
 # Run webhook receiver
-CMD ["python", "-m", "uvicorn", "webhook.webhook_receiver:app", "--host", "0.0.0.0", "--port", "9002", "--log-config", "none"]
+CMD ["python", "-m", "uvicorn", "webhook.webhook_receiver:app", "--host", "0.0.0.0", "--port", "9002"]

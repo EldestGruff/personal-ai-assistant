@@ -168,9 +168,6 @@ async def initialize_backend_system():
     - Metrics collector for performance tracking
     """
     from ..services.ai_backends import AIBackendRegistry
-    from ..services.ai_backends.claude_backend import ClaudeBackend
-    from ..services.ai_backends.ollama_backend import OllamaBackend
-    from ..services.ai_backends.lmstudio_backend import LMStudioBackend
     from ..services.ai_backends.mock_backend import MockBackend
     from ..services.backend_selection.config import BackendConfig
     from ..services.backend_selection.default_selector import DefaultSelector
@@ -191,19 +188,21 @@ async def initialize_backend_system():
     
     # Register Claude if available
     if config.is_backend_available("claude"):
-        if config.claude_api_key:
-            try:
+        try:
+            from ..services.ai_backends.claude_backend import ClaudeBackend
+            if config.claude_api_key:
                 claude = ClaudeBackend(api_key=config.claude_api_key)
                 registry.register("claude", claude)
                 print("   ✅ Claude backend registered")
-            except Exception as e:
-                print(f"   ⚠️  Claude backend failed to initialize: {e}")
-        else:
-            print("   ⚠️  Claude backend enabled but no API key found")
+            else:
+                print("   ⚠️  Claude backend enabled but no API key found")
+        except Exception as e:
+            print(f"   ⚠️  Claude backend failed to initialize: {e}")
     
     # Register Ollama if available
     if config.is_backend_available("ollama"):
         try:
+            from ..services.ai_backends.ollama_backend import OllamaBackend
             ollama = OllamaBackend(
                 base_url=config.ollama_base_url,
                 model=config.ollama_model
@@ -216,12 +215,7 @@ async def initialize_backend_system():
     # Register LM Studio if available
     if config.is_backend_available("lmstudio"):
         try:
-            # We reuse OLLAMA_BASE_URL for now as there isn't a dedicated env var yet,
-            # or we can assume it uses the same one or a new one.
-            # Ideally we should add LMSTUDIO_BASE_URL to config.py, but to avoid changing too many files,
-            # we can use OLLAMA_BASE_URL (which we set to the LM Studio URL) or hardcode the default.
-            # Let's use the config.ollama_base_url since the user set that to the LM Studio URL.
-            
+            from ..services.ai_backends.lmstudio_backend import LMStudioBackend
             lmstudio = LMStudioBackend(
                 base_url=config.ollama_base_url, 
                 model=config.ollama_model
