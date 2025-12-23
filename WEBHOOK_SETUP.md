@@ -1,7 +1,8 @@
-# GitHub Webhooks Deployment System Setup
+# GitHub Webhooks Deployment System Setup (Docker-Based)
 
 **Status:** Ready for implementation  
 **Target:** TrueNAS SCALE (moria)  
+**Approach:** Docker container for webhook receiver  
 **Workflow:** Push to main → Auto-deploy  
 
 ---
@@ -12,7 +13,7 @@ When you push code to `main` on GitHub:
 
 1. GitHub sends webhook to `https://ai.gruff.icu/webhook`
 2. Nginx Proxy Manager routes it to `moria:9002/webhook`
-3. Webhook receiver validates signature and triggers deployment
+3. Webhook receiver container validates signature and triggers deployment
 4. Deployment script pulls code, builds frontend, restarts Docker
 5. Everything is logged
 
@@ -20,133 +21,151 @@ When you push code to `main` on GitHub:
 
 ---
 
+## Components
+
+### Docker-Based Webhook Receiver
+- Lightweight Python container running FastAPI + uvicorn
+- Runs alongside your existing postgres and api containers
+- Auto-restarts if it crashes
+- Shares the same Docker network as your other services
+
+### Deployment Script
+- Same as before, runs on moria
+- Called by webhook receiver when valid GitHub webhook received
+- Handles git pull, npm build, migrations, docker rebuild
+
+---
+
 ## One-Time Setup (on moria)
 
-### Step 1: Verify Git Repository
+### Step 1: Verify Git Repository is Initialized
 
-First, moria needs to be a git repository that can pull from GitHub.
+This should already be done, but verify:
 
 ```bash
 ssh andy@moria
+
 cd /mnt/data2-pool/andy-ai/app
 
-# Check if git repo exists
+# Check git status
+git status
+# Should show: On branch main, Your branch is up to date with 'origin/main'
+
+# Check remotes
 git remote -v
 # Should show: origin https://github.com/EldestGruff/personal-ai-assistant.git
-
-# If NOT set up as git repo yet:
-git init
-git remote add origin https://github.com/EldestGruff/personal-ai-assistant.git
-git fetch origin
-git checkout main
 ```
-
-**Why:** The deploy script needs to pull code from GitHub. If moria doesn't have `.git/`, deployment will fail.
 
 ---
 
-### Step 2: Set Up Webhook Receiver Service
+### Step 2: Verify Webhook Files Exist
 
-Copy webhook receiver to moria:
+Check that recent pull brought in the webhook files:
 
 ```bash
-# On your Mac
-scp webhook/webhook_receiver.py andy@moria:/mnt/data2-pool/andy-ai/app/webhook/
-
-# SSH into moria
 ssh andy@moria
+
 cd /mnt/data2-pool/andy-ai/app
 
-# Create webhook directory if it doesn't exist
-mkdir -p webhook
+# Should exist:
+ls -la webhook/webhook_receiver.py
+ls -la webhook/Dockerfile
+ls -la scripts/deploy.sh
 ```
+
+All three should exist from the git pull.
 
 ---
 
-### Step 3: Create Systemd Service File
+### Step 3: Update docker-compose.yml Environment Variables
 
-Webhook receiver needs to run as a service that auto-starts on reboot.
+The webhook-receiver service needs the webhook secret to validate GitHub signatures.
 
 ```bash
 ssh andy@moria
 
-# Create systemd service file
-sudo tee /etc/systemd/system/personal-ai-webhook.service > /dev/null << 'EOF'
-[Unit]
-Description=Personal AI Assistant Webhook Receiver
-After=network.target
-StartLimitIntervalSec=0
+cd /mnt/data2-pool/andy-ai/app/docker
 
-[Service]
-Type=simple
-User=andy
-WorkingDirectory=/mnt/data2-pool/andy-ai/app
-Environment="WEBHOOK_SECRET=thisisasecret"
-Environment="DEPLOY_SCRIPT=/mnt/data2-pool/andy-ai/app/scripts/deploy.sh"
-Environment="LOG_DIR=/mnt/data2-pool/andy-ai/app/logs/deployments"
-ExecStart=/usr/local/bin/python3 -m uvicorn webhook.webhook_receiver:app --host 0.0.0.0 --port 9002
-Restart=always
-RestartSec=10
+# Edit .env file
+nano .env
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start the service
-sudo systemctl daemon-reload
-sudo systemctl enable personal-ai-webhook.service
-sudo systemctl start personal-ai-webhook.service
-
-# Verify it started
-sudo systemctl status personal-ai-webhook.service
+# Add or verify this line exists:
+# WEBHOOK_SECRET=thisisasecret
 ```
 
-**What this does:**
-- Creates a service that runs `webhook_receiver.py` on port 9002
-- Automatically restarts if it crashes
-- Auto-starts on moria reboot
-- Sets environment variables (webhook secret, paths)
+The `docker-compose.yml` is already configured to use this environment variable.
 
 ---
 
-### Step 4: Verify Webhook Receiver is Running
+### Step 4: Build and Start the Webhook Receiver
 
 ```bash
-# Check if service is active
-sudo systemctl status personal-ai-webhook.service
+ssh andy@moria
 
-# Check if port 9002 is listening
-sudo netstat -tlnp | grep 9002
-# Should show: tcp 0 0 0.0.0.0:9002 0.0.0.0:* LISTEN
+cd /mnt/data2-pool/andy-ai/app/docker
 
-# Test health endpoint (from moria)
+# Build all images (including webhook-receiver)
+docker compose build
+
+# Verify the build succeeded
+# Should show: [+] Built personal-ai-webhook (or similar)
+
+# Start all containers
+docker compose up -d
+
+# Verify containers are running
+docker compose ps
+# Should show:
+#   personal-ai-db      (Healthy)
+#   personal-ai-api     (Healthy)
+#   personal-ai-webhook (Healthy)
+```
+
+---
+
+### Step 5: Verify Webhook Receiver is Running
+
+```bash
+ssh andy@moria
+
+# Check if container is healthy
+docker compose ps personal-ai-webhook
+# Status should show "Healthy"
+
+# Test health endpoint
 curl http://localhost:9002/health
 # Should return: {"status":"healthy","service":"webhook-receiver"}
+
+# Check container logs
+docker compose logs webhook-receiver
+# Should show: "Uvicorn running on 0.0.0.0:9002"
 ```
 
 ---
 
-### Step 5: Make Deploy Script Executable
+### Step 6: Make Deploy Script Executable
 
 ```bash
 ssh andy@moria
+
 cd /mnt/data2-pool/andy-ai/app
 
 chmod +x scripts/deploy.sh
 
 # Verify it's executable
 ls -la scripts/deploy.sh
-# Should show: -rwxr-xr-x (executable)
+# Should show: -rwxr-xr-x
 ```
 
 ---
 
-### Step 6: Test Deployment Manually (Optional but Recommended)
+### Step 7: Test Deployment Manually (Optional but Recommended)
 
 Before relying on webhooks, test the deploy script works:
 
 ```bash
 ssh andy@moria
+
 cd /mnt/data2-pool/andy-ai/app
 
 # Run deployment script manually
@@ -178,7 +197,7 @@ git push origin main
 # - Code to pull
 # - Frontend to build
 # - Database migrations
-# - Docker restart
+# - Docker rebuild
 # 
 # System is live
 ```
@@ -202,16 +221,21 @@ tail -f /mnt/data2-pool/andy-ai/app/logs/deployments/20250120_143022.log
 tail -50 /mnt/data2-pool/andy-ai/app/logs/deployments/latest.log
 ```
 
-### Check Webhook Receiver Status
+### Check Webhook Receiver Container Status
 
 ```bash
 ssh andy@moria
 
-# Check if service is running
-sudo systemctl status personal-ai-webhook.service
+cd /mnt/data2-pool/andy-ai/app/docker
 
-# View service logs
-sudo journalctl -u personal-ai-webhook.service -f
+# Check if container is running
+docker compose ps webhook-receiver
+
+# View container logs
+docker compose logs webhook-receiver
+
+# Follow logs in real-time
+docker compose logs -f webhook-receiver
 
 # Check if port 9002 is responsive
 curl http://localhost:9002/health
@@ -230,7 +254,21 @@ GitHub should have already sent test webhooks. Check them:
 3. Scroll to "Recent Deliveries"
 4. You should see POST requests with status 200
 
-If you see 404 or 500, something is wrong with the routing.
+If you see 404 or 500, check that NPM is routing correctly:
+
+```bash
+ssh andy@moria
+
+# Verify webhook receiver is listening on 9002
+docker compose ps webhook-receiver
+# Should show: Up (healthy)
+
+# Check NPM proxy configuration
+# Go to http://moria:81 → Hosts → Proxy Hosts → ai.gruff.icu
+# Verify it forwards to moria:9002 (not 8000)
+```
+
+---
 
 ### Test 2: Trigger Manual Deployment
 
@@ -243,6 +281,8 @@ curl -X POST http://localhost:9002/webhook \
 
 # Should return 401 (bad signature) - that's correct
 ```
+
+---
 
 ### Test 3: Real Push to Main
 
@@ -265,30 +305,40 @@ tail -f /mnt/data2-pool/andy-ai/app/logs/deployments/latest.log
 
 ## Troubleshooting
 
-### Issue: Webhook receiver not starting
+### Issue: Webhook receiver container won't start
 
 **Check:**
 ```bash
-sudo systemctl status personal-ai-webhook.service
-sudo journalctl -u personal-ai-webhook.service -n 50
+ssh andy@moria
+cd /mnt/data2-pool/andy-ai/app/docker
+
+docker compose ps webhook-receiver
+# Check status
+
+docker compose logs webhook-receiver
+# Check error messages
 ```
 
 **Common causes:**
-- Python/uvicorn not installed
+- Dockerfile not found (webhook/Dockerfile doesn't exist)
+- Python dependencies not installed (FastAPI/uvicorn missing)
 - Port 9002 already in use
-- Directory permissions
+- webhook_receiver.py file not found in container
 
 **Fix:**
 ```bash
-# Install dependencies
-pip install fastapi uvicorn
+# Verify files exist
+ls -la webhook/webhook_receiver.py
+ls -la webhook/Dockerfile
 
-# Check port 9002
-lsof -i :9002
-# If something is using it, kill it
+# Rebuild container (fresh build)
+docker compose build --no-cache webhook-receiver
 
-# Restart service
-sudo systemctl restart personal-ai-webhook.service
+# Restart
+docker compose up -d webhook-receiver
+
+# Check logs
+docker compose logs webhook-receiver
 ```
 
 ---
@@ -308,10 +358,7 @@ tail -100 /mnt/data2-pool/andy-ai/app/logs/deployments/latest.log
 
 **Quick fixes:**
 ```bash
-# Ensure npm is available
-which npm
-npm --version
-
+# Ensure npm is available in your frontend container/image
 # Test git pull manually
 cd /mnt/data2-pool/andy-ai/app
 git pull origin main
@@ -327,11 +374,12 @@ docker compose --version
 
 **Check:**
 ```bash
-# From moria, test connectivity to NPM
-curl -v http://localhost:81/  # NPM admin interface
+# From moria, test connectivity to webhook receiver
+curl -v http://localhost:9002/health
 
 # From your Mac, test the webhook endpoint
 curl -v https://ai.gruff.icu/webhook
+# Should return 400 (missing signature) - that's expected, means it reached
 
 # Check NPM proxy configuration
 # Go to http://moria:81 → Hosts → Proxy Hosts
@@ -344,12 +392,13 @@ curl -v https://ai.gruff.icu/webhook
 
 **Check the secret matches:**
 ```bash
-# In webhook_receiver.py, secret is read from environment variable
-echo $WEBHOOK_SECRET
+# In docker .env, secret should be:
+grep WEBHOOK_SECRET /mnt/data2-pool/andy-ai/app/docker/.env
 
-# In GitHub webhook settings, the secret should match exactly
+# In GitHub webhook settings:
 # Go to GitHub → Settings → Webhooks → Edit
-# Compare the "Secret" field with what's in systemd service file
+# Compare the "Secret" field with what's in .env
+# They must match exactly
 ```
 
 ---
@@ -387,28 +436,30 @@ echo $WEBHOOK_SECRET
 
 ---
 
-## Cleanup Commands
-
-If you need to manually manage things:
+## Cleanup/Management Commands
 
 ```bash
+ssh andy@moria
+cd /mnt/data2-pool/andy-ai/app/docker
+
 # Stop webhook receiver
-sudo systemctl stop personal-ai-webhook.service
+docker compose stop webhook-receiver
 
 # Start webhook receiver
-sudo systemctl start personal-ai-webhook.service
+docker compose start webhook-receiver
 
 # Restart webhook receiver
-sudo systemctl restart personal-ai-webhook.service
+docker compose restart webhook-receiver
 
-# View recent logs
-sudo journalctl -u personal-ai-webhook.service -n 100
+# View logs
+docker compose logs webhook-receiver
 
-# Disable auto-start (if you want to disable automatic deployments)
-sudo systemctl disable personal-ai-webhook.service
+# Follow logs
+docker compose logs -f webhook-receiver
 
-# Re-enable auto-start
-sudo systemctl enable personal-ai-webhook.service
+# Remove and recreate (fresh start)
+docker compose rm webhook-receiver
+docker compose up -d webhook-receiver
 
 # Manually trigger deployment
 bash /mnt/data2-pool/andy-ai/app/scripts/deploy.sh
@@ -420,8 +471,8 @@ bash /mnt/data2-pool/andy-ai/app/scripts/deploy.sh
 
 You'll know it's working when:
 
-- ✅ Webhook receiver service is running: `sudo systemctl status personal-ai-webhook.service`
-- ✅ Port 9002 is listening: `sudo netstat -tlnp | grep 9002`
+- ✅ Webhook receiver container is running: `docker compose ps webhook-receiver`
+- ✅ Container status shows "Healthy": `docker compose ps webhook-receiver`
 - ✅ Health check passes: `curl http://localhost:9002/health`
 - ✅ You can push code and see deployment logs appear in real-time
 - ✅ System is live within 3 minutes of pushing
@@ -430,11 +481,13 @@ You'll know it's working when:
 
 ## Next Steps
 
-1. **Run one-time setup** on moria (all the sections above)
-2. **Test manual deployment** with `bash scripts/deploy.sh`
-3. **Push a test commit** to main
-4. **Watch logs** as webhook triggers automatic deployment
-5. **Verify system is live** after deployment completes
+1. **Verify files exist** on moria from git pull
+2. **Set WEBHOOK_SECRET** in docker/.env
+3. **Build and start containers** with `docker compose build` and `docker compose up -d`
+4. **Test manual deployment** with `bash scripts/deploy.sh`
+5. **Push a test commit** to main
+6. **Watch logs** as webhook triggers automatic deployment
+7. **Verify system is live** after deployment completes
 
 Once this is working, you never have to manually deploy again. Just push code.
 
