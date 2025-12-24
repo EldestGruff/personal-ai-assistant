@@ -52,6 +52,8 @@ services:
       - ../scripts:/app/scripts:ro
       # Mount logs directory for deployment logs
       - ../logs:/app/logs
+      # Mount full app directory so deploy.sh can access git repo and files
+      - /mnt/data2-pool/andy-ai/app:/mnt/data2-pool/andy-ai/app
     stdin_open: false
     tty: false
 
