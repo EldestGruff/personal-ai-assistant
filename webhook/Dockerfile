@@ -2,12 +2,13 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (git needed for deploy.sh, curl for health checks, node for frontend builds)
+# Install system dependencies (git for pulling code, nodejs/npm for frontend builds, docker for container management)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     nodejs \
     npm \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 # Install FastAPI, uvicorn, and alembic (for database migrations)
