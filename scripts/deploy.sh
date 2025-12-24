@@ -135,14 +135,18 @@ if [ ! -f "$DOCKER_DIR/.env" ]; then
     exit 1
 fi
 
-# Source the environment to get DATABASE_URL
+# Source the environment to get POSTGRES variables
 source "$DOCKER_DIR/.env" || {
     log_error "failed to source docker .env"
     exit 1
 }
 
+# Construct DATABASE_URL from individual postgres variables
+# docker-compose does this dynamically, so we replicate that here
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+
 if [ -z "$DATABASE_URL" ]; then
-    log_error "DATABASE_URL not set in docker .env"
+    log_error "DATABASE_URL could not be constructed from POSTGRES variables"
     exit 1
 fi
 
