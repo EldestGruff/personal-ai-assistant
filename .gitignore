@@ -63,3 +63,4 @@ yarn-error.log*
 frontend/dist/
 frontend/.vite/
 frontend/.cache/
+web/

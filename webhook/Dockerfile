@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm \
     && rm -rf /var/lib/apt/lists/*
 
-# Install FastAPI and uvicorn
-RUN pip install --no-cache-dir fastapi uvicorn[standard]
+# Install FastAPI, uvicorn, and alembic (for database migrations)
+RUN pip install --no-cache-dir fastapi uvicorn[standard] alembic
 
 # Copy webhook receiver code
 COPY webhook/webhook_receiver.py /app/webhook/webhook_receiver.py
