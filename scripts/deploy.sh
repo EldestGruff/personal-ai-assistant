@@ -158,10 +158,10 @@ migration_output=$(alembic upgrade head 2>&1) || {
 echo "$migration_output"
 log_success "database migrations completed"
 
-# Step 6: Rebuild Docker images
+# Step 6: Rebuild Docker images (only API, not webhook to avoid bootstrap issues)
 log_section "STEP 6: REBUILD DOCKER IMAGES"
 cd "$DOCKER_DIR"
-docker_build=$(docker compose build 2>&1) || {
+docker_build=$(docker compose build api 2>&1) || {
     log_error "docker compose build failed"
     echo "$docker_build"
     exit 1
@@ -170,22 +170,33 @@ echo "build output (last 40 lines):"
 echo "$docker_build" | tail -40
 log_success "docker images built successfully"
 
-# Step 7: Restart containers
-log_section "STEP 7: RESTART CONTAINERS"
-docker_down=$(docker compose down 2>&1) || {
-    log_error "docker compose down failed"
-    echo "$docker_down"
+# Step 7: Restart containers (only API - webhook must not restart itself!)
+# Note: postgres doesn't need restart on code deploys, webhook would kill this script
+log_section "STEP 7: RESTART API CONTAINER"
+echo "stopping api container..."
+docker_stop=$(docker compose stop api 2>&1) || {
+    log_error "docker compose stop api failed"
+    echo "$docker_stop"
     exit 1
 }
-echo "$docker_down"
+echo "$docker_stop"
 
-docker_up=$(docker compose up -d 2>&1) || {
-    log_error "docker compose up failed"
+echo "removing api container..."
+docker_rm=$(docker compose rm -f api 2>&1) || {
+    log_error "docker compose rm api failed"
+    echo "$docker_rm"
+    exit 1
+}
+echo "$docker_rm"
+
+echo "starting api container with new image..."
+docker_up=$(docker compose up -d api 2>&1) || {
+    log_error "docker compose up api failed"
     echo "$docker_up"
     exit 1
 }
 echo "$docker_up"
-log_success "containers started"
+log_success "api container restarted"
 
 # Step 8: Wait for services to be healthy
 log_section "STEP 8: WAIT FOR SERVICES"
