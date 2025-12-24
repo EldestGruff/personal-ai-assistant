@@ -200,15 +200,31 @@ log_success "api container restarted"
 
 # Step 8: Wait for services to be healthy
 log_section "STEP 8: WAIT FOR SERVICES"
-echo "waiting 45 seconds for services to stabilize..."
-sleep 45
+echo "waiting for API to become healthy (up to 60 seconds)..."
 
-# Check if API is healthy
-api_health=$(curl -s http://api:8000/api/v1/health 2>&1 || echo "failed") 
-if echo "$api_health" | grep -q "healthy"; then
-    log_success "API health check passed"
-else
-    log_error "API health check failed: $api_health"
+# Retry health check with exponential backoff
+max_attempts=6
+attempt=1
+wait_time=5
+
+while [ $attempt -le $max_attempts ]; do
+    echo "health check attempt $attempt/$max_attempts (waiting ${wait_time}s first)..."
+    sleep $wait_time
+    
+    api_health=$(curl -s --max-time 10 http://api:8000/api/v1/health 2>&1 || echo "failed")
+    
+    if echo "$api_health" | grep -q "healthy"; then
+        log_success "API health check passed on attempt $attempt"
+        break
+    fi
+    
+    echo "attempt $attempt failed: $api_health"
+    attempt=$((attempt + 1))
+    wait_time=$((wait_time + 5))
+done
+
+if ! echo "$api_health" | grep -q "healthy"; then
+    log_error "API health check failed after $max_attempts attempts: $api_health"
     exit 1
 fi
 
