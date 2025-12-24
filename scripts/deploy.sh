@@ -65,6 +65,8 @@ log_section "STEP 2: PULL LATEST CODE FROM GITHUB"
 cd "$APP_DIR"
 # Allow git to operate on repository even if owned by different user (Docker container issue)
 git config --global --add safe.directory "$APP_DIR"
+# Use rebase for automated deployments (keeps history linear, no merge commits)
+git config pull.rebase true
 git_output=$(git pull origin main 2>&1) || {
     log_error "git pull failed"
     echo "$git_output"
