@@ -19,13 +19,14 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Add Docker repository
 RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Install Docker CLI from official Docker repository
+# Install Docker CLI AND docker-compose-plugin (modern V2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     docker-ce-cli \
+    docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies with PyYAML pinned to a version with Python 3.12 wheels
-RUN pip install --no-cache-dir fastapi uvicorn[standard] alembic docker-compose "pyyaml>=6.0"
+# Install Python dependencies (NO docker-compose - it's deprecated!)
+RUN pip install --no-cache-dir fastapi uvicorn[standard] alembic
 
 # Copy webhook receiver code
 COPY webhook/webhook_receiver.py /app/webhook/webhook_receiver.py
