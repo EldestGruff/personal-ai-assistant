@@ -54,6 +54,8 @@ services:
       - ../logs:/app/logs
       # Mount full app directory so deploy.sh can access git repo and files
       - /mnt/data2-pool/andy-ai/app:/mnt/data2-pool/andy-ai/app
+      # Mount Docker socket so webhook can rebuild containers
+      - /var/run/docker.sock:/var/run/docker.sock
     stdin_open: false
     tty: false
 
