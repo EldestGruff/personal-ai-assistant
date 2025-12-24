@@ -204,7 +204,7 @@ echo "waiting 45 seconds for services to stabilize..."
 sleep 45
 
 # Check if API is healthy
-api_health=$(curl -s http://localhost:8000/api/v1/health 2>&1 || echo "failed") 
+api_health=$(curl -s http://api:8000/api/v1/health 2>&1 || echo "failed") 
 if echo "$api_health" | grep -q "healthy"; then
     log_success "API health check passed"
 else
