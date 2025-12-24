@@ -24,8 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install FastAPI, uvicorn, alembic, and docker-compose via pip
-RUN pip install --no-cache-dir fastapi uvicorn[standard] alembic docker-compose
+# Install dependencies with PyYAML pinned to a version with Python 3.12 wheels
+RUN pip install --no-cache-dir fastapi uvicorn[standard] alembic docker-compose "pyyaml>=6.0"
 
 # Copy webhook receiver code
 COPY webhook/webhook_receiver.py /app/webhook/webhook_receiver.py
