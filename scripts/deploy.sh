@@ -200,8 +200,8 @@ log_success "api container restarted"
 
 # Step 8: Wait for services to be healthy
 log_section "STEP 8: WAIT FOR SERVICES"
-echo "waiting 15 seconds for services to stabilize..."
-sleep 15
+echo "waiting 45 seconds for services to stabilize..."
+sleep 45
 
 # Check if API is healthy
 api_health=$(curl -s http://localhost:8000/api/v1/health 2>&1 || echo "failed") 
