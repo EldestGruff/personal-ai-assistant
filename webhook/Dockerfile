@@ -2,13 +2,26 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (git for pulling code, nodejs/npm for frontend builds, docker for container management)
+# Install system dependencies and Docker CLI via official Docker repository
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     nodejs \
     npm \
-    docker.io \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Docker's official GPG key
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add Docker repository
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker CLI from official Docker repository
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
 # Install FastAPI, uvicorn, and alembic (for database migrations)
