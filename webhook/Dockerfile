@@ -2,6 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install system dependencies (git needed for deploy.sh, curl for health checks)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install FastAPI and uvicorn
 RUN pip install --no-cache-dir fastapi uvicorn[standard]
 
