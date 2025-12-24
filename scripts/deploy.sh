@@ -63,6 +63,8 @@ log_success "git repository exists"
 # Step 2: Pull latest code
 log_section "STEP 2: PULL LATEST CODE FROM GITHUB"
 cd "$APP_DIR"
+# Allow git to operate on repository even if owned by different user (Docker container issue)
+git config --global --add safe.directory "$APP_DIR"
 git_output=$(git pull origin main 2>&1) || {
     log_error "git pull failed"
     echo "$git_output"
