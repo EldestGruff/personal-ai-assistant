@@ -29,6 +29,8 @@ class BackendConfig(BaseModel):
         CLAUDE_API_KEY: Anthropic API key (required for Claude)
         OLLAMA_BASE_URL: Ollama server URL (default: "http://192.168.7.187:11434")
         OLLAMA_MODEL: Ollama model name (default: "gemma3:27b")
+        OPENAI_COMPATIBLE_BASE_URL: OpenAI-compatible server URL (e.g., llama.cpp, LM Studio)
+        OPENAI_COMPATIBLE_MODEL: Model name for OpenAI-compatible server
     
     Example:
         # Load from environment
@@ -71,6 +73,14 @@ class BackendConfig(BaseModel):
     ollama_model: str = Field(
         default="gemma3:27b",
         description="Ollama model to use"
+    )
+    openai_compatible_base_url: str = Field(
+        default="http://localhost:8080/v1",
+        description="OpenAI-compatible server URL (llama.cpp, LM Studio, vLLM, etc.)"
+    )
+    openai_compatible_model: str = Field(
+        default="local-model",
+        description="Model name for OpenAI-compatible server"
     )
     
     @field_validator("selection_strategy")
@@ -125,6 +135,8 @@ class BackendConfig(BaseModel):
         claude_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
         ollama_url = os.getenv("OLLAMA_BASE_URL", "http://192.168.7.187:11434")
         ollama_model = os.getenv("OLLAMA_MODEL", "gemma3:27b")
+        openai_url = os.getenv("OPENAI_COMPATIBLE_BASE_URL", "http://localhost:8080/v1")
+        openai_model = os.getenv("OPENAI_COMPATIBLE_MODEL", "local-model")
         
         return cls(
             available_backends=available,
@@ -134,6 +146,8 @@ class BackendConfig(BaseModel):
             claude_api_key=claude_key,
             ollama_base_url=ollama_url,
             ollama_model=ollama_model,
+            openai_compatible_base_url=openai_url,
+            openai_compatible_model=openai_model,
         )
     
     def is_backend_available(self, backend_name: str) -> bool:
@@ -170,7 +184,7 @@ class BackendConfig(BaseModel):
         timeouts = {
             "claude": 30,      # Claude API is fast
             "ollama": 120,     # Large local models need time (increased for 30b)
-            "lmstudio": 60,    # Local LLM via OpenAI API needs time
+            "openai": 60,      # OpenAI-compatible local LLMs (llama.cpp, LM Studio, etc.)
             "mock": 5,         # Mock is instant
         }
         return timeouts.get(backend_name, 30)

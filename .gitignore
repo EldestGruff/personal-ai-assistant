@@ -63,3 +63,9 @@ yarn-error.log*
 frontend/dist/
 frontend/.vite/
 frontend/.cache/
+
+# Build artifacts
+*.tar.gz
+
+# Secrets
+docker/.env.moria

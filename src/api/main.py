@@ -212,18 +212,18 @@ async def initialize_backend_system():
         except Exception as e:
             print(f"   ⚠️  Ollama backend failed to initialize: {e}")
 
-    # Register LM Studio if available
-    if config.is_backend_available("lmstudio"):
+    # Register OpenAI-compatible backend (llama.cpp, LM Studio, vLLM, etc.) if available
+    if config.is_backend_available("openai"):
         try:
-            from ..services.ai_backends.lmstudio_backend import LMStudioBackend
-            lmstudio = LMStudioBackend(
-                base_url=config.ollama_base_url, 
-                model=config.ollama_model
+            from ..services.ai_backends.openai_compatible_backend import OpenAICompatibleBackend
+            openai = OpenAICompatibleBackend(
+                base_url=config.openai_compatible_base_url, 
+                model=config.openai_compatible_model
             )
-            registry.register("lmstudio", lmstudio)
-            print(f"   ✅ LM Studio backend registered ({config.ollama_model})")
+            registry.register("openai", openai)
+            print(f"   ✅ OpenAI-compatible backend registered ({config.openai_compatible_model})")
         except Exception as e:
-            print(f"   ⚠️  LM Studio backend failed to initialize: {e}")
+            print(f"   ⚠️  OpenAI-compatible backend failed to initialize: {e}")
     
     # Register Mock backend if available
     if config.is_backend_available("mock"):
