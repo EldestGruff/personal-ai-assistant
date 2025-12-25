@@ -444,7 +444,7 @@ const ui = {
             // New v2 endpoint - always fetch fresh analysis
             const response = await api.getConsciousnessCheck(20);
 
-            if (!response || !response.analysis || !response.analysis.summary) {
+            if (!response || !response.summary) {
                 container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Waiting for first analysis');
                 state.consciousnessCheck.isLoading = false;
                 return;
@@ -525,26 +525,29 @@ const ui = {
 
     displayClaudeInsightsV2(response) {
         const container = document.getElementById('claude-insights');
-        const analysis = response.analysis;
-        const metadata = response.metadata;
+        
+        // Extract backend name from backend_stats (first key)
+        const backendUsed = Object.keys(response.backend_stats || {})[0] || 'unknown';
+        const backendInfo = response.backend_stats?.[backendUsed];
 
         container.innerHTML = `
             <div class="insights-content">
                 <div class="insights-summary">
-                    <p>${this.escapeHtml(analysis.summary)}</p>
+                    <p>${this.escapeHtml(response.summary)}</p>
                     <div class="insights-meta">
-                        <span>🤖 ${analysis.backend_used}</span>
-                        <span>⚡ ${metadata.tokens_used} tokens</span>
-                        <span>⏱️ ${metadata.processing_time_ms}ms</span>
-                        <span>🕒 ${utils.timeAgo(metadata.timestamp)}</span>
+                        <span>🤖 ${backendUsed}</span>
+                        ${backendInfo?.tokens_used ? `<span>⚡ ${backendInfo.tokens_used} tokens</span>` : ''}
+                        ${backendInfo?.processing_time_ms ? `<span>⏱️ ${backendInfo.processing_time_ms}ms</span>` : ''}
+                        <span>📊 ${response.source_analyses} thoughts analyzed</span>
+                        <span>🕒 ${utils.timeAgo(response.timestamp)}</span>
                     </div>
                 </div>
 
-                ${analysis.themes && analysis.themes.length > 0 ? `
+                ${response.themes && response.themes.length > 0 ? `
                     <div class="insights-section">
                         <h4>🎯 Key Themes</h4>
                         <div class="insights-tags">
-                            ${analysis.themes.map(theme => {
+                            ${response.themes.map(theme => {
                                 const themeText = typeof theme === 'string' ? theme : theme.theme;
                                 return `<span class="insight-tag theme-tag">${this.escapeHtml(themeText)}</span>`;
                             }).join('')}
@@ -552,11 +555,11 @@ const ui = {
                     </div>
                 ` : ''}
 
-                ${analysis.suggested_actions && analysis.suggested_actions.length > 0 ? `
+                ${response.suggested_actions && response.suggested_actions.length > 0 ? `
                     <div class="insights-section">
                         <h4>💡 Suggested Actions</h4>
                         <ul class="insights-list">
-                            ${analysis.suggested_actions.map(action => {
+                            ${response.suggested_actions.map(action => {
                                 const actionText = typeof action === 'string' ? action : action.action;
                                 const priority = typeof action === 'object' && action.priority ? `<span class="priority-badge ${action.priority}">${action.priority}</span>` : '';
                                 return `<li>${this.escapeHtml(actionText)} ${priority}</li>`;
@@ -565,10 +568,10 @@ const ui = {
                     </div>
                 ` : ''}
 
-                ${analysis.related_thought_ids && analysis.related_thought_ids.length > 0 ? `
+                ${response.related_thought_ids && response.related_thought_ids.length > 0 ? `
                     <div class="insights-section">
                         <h4>🔗 Related Thoughts</h4>
-                        <p>${analysis.related_thought_ids.length} related thoughts found</p>
+                        <p>${response.related_thought_ids.length} related thoughts found</p>
                     </div>
                 ` : ''}
             </div>
