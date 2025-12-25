@@ -75,51 +75,57 @@ git_output=$(git pull origin main 2>&1) || {
 echo "$git_output"
 log_success "code pulled from github"
 
-# Step 3: Build frontend
-log_section "STEP 3: BUILD FRONTEND"
-if [ ! -d "$FRONTEND_DIR" ]; then
-    log_error "frontend directory not found: $FRONTEND_DIR"
-    exit 1
-fi
+# Step 3: Build frontend (DISABLED - using standalone web/ files instead of React build)
+# Commenting out React build process to preserve standalone web UI files in web/
+# If React frontend is needed again, uncomment this section and Step 4
+#
+# log_section "STEP 3: BUILD FRONTEND"
+# if [ ! -d "$FRONTEND_DIR" ]; then
+#     log_error "frontend directory not found: $FRONTEND_DIR"
+#     exit 1
+# fi
+# 
+# if [ ! -f "$FRONTEND_DIR/package.json" ]; then
+#     log_error "package.json not found in frontend directory"
+#     exit 1
+# fi
+# 
+# cd "$FRONTEND_DIR"
+# npm_output=$(npm install 2>&1) || {
+#     log_error "npm install failed"
+#     echo "$npm_output"
+#     exit 1
+# }
+# echo "npm install output (last 20 lines):"
+# echo "$npm_output" | tail -20
+# log_success "dependencies installed"
+# 
+# build_output=$(npm run build 2>&1) || {
+#     log_error "npm build failed"
+#     echo "$build_output"
+#     exit 1
+# }
+# echo "build output (last 30 lines):"
+# echo "$build_output" | tail -30
+# log_success "frontend built successfully"
+# 
+# # Step 4: Copy build to web directory (DISABLED)
+# log_section "STEP 4: COPY BUILD TO WEB DIRECTORY"
+# if [ ! -d "$FRONTEND_DIR/dist" ]; then
+#     log_error "build output directory not found: $FRONTEND_DIR/dist"
+#     exit 1
+# fi
+# 
+# # Clear web directory and copy new build
+# rm -rf "$WEB_DIR"/*
+# cp -r "$FRONTEND_DIR/dist"/* "$WEB_DIR/" || {
+#     log_error "failed to copy build to web directory"
+#     exit 1
+# }
+# log_success "build copied to web directory"
 
-if [ ! -f "$FRONTEND_DIR/package.json" ]; then
-    log_error "package.json not found in frontend directory"
-    exit 1
-fi
-
-cd "$FRONTEND_DIR"
-npm_output=$(npm install 2>&1) || {
-    log_error "npm install failed"
-    echo "$npm_output"
-    exit 1
-}
-echo "npm install output (last 20 lines):"
-echo "$npm_output" | tail -20
-log_success "dependencies installed"
-
-build_output=$(npm run build 2>&1) || {
-    log_error "npm build failed"
-    echo "$build_output"
-    exit 1
-}
-echo "build output (last 30 lines):"
-echo "$build_output" | tail -30
-log_success "frontend built successfully"
-
-# Step 4: Copy build to web directory
-log_section "STEP 4: COPY BUILD TO WEB DIRECTORY"
-if [ ! -d "$FRONTEND_DIR/dist" ]; then
-    log_error "build output directory not found: $FRONTEND_DIR/dist"
-    exit 1
-fi
-
-# Clear web directory and copy new build
-rm -rf "$WEB_DIR"/*
-cp -r "$FRONTEND_DIR/dist"/* "$WEB_DIR/" || {
-    log_error "failed to copy build to web directory"
-    exit 1
-}
-log_success "build copied to web directory"
+log_section "STEP 3-4: SKIPPED (using standalone web/ files)"
+log_success "standalone web UI files will be used from git repository"
 
 # Step 5: Run database migrations
 log_section "STEP 5: RUN DATABASE MIGRATIONS"
