@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal AI Assistant - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🧠 Personal AI Assistant</h1>
+            <div class="header-stats">
+                <span id="total-thoughts" class="stat">0 thoughts</span>
+                <span id="total-tasks" class="stat">0 tasks</span>
+                <button id="refresh-btn" class="btn-refresh">↻ Refresh</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+            <button class="nav-btn" data-view="thoughts">Thoughts</button>
+            <button class="nav-btn" data-view="tasks">Tasks</button>
+            <button class="nav-btn" data-view="stats">Statistics</button>
+        </nav>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view active">
+            <!-- Quick Capture -->
+            <div id="quick-capture-container"></div>
+            
+            <div class="dashboard-grid">
+                <!-- Claude Consciousness Check -->
+                <div class="card claude-insights-card">
+                    <div class="card-header">
+                        <h2>🤖 Claude Consciousness Check</h2>
+                        <button id="refresh-insights-btn" class="btn-icon" title="Refresh insights">↻</button>
+                    </div>
+                    <div id="claude-insights" class="claude-insights">
+                        <div class="insights-loading">
+                            <div class="spinner-small"></div>
+                            <span>Analyzing your recent thoughts...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card">
+                    <h2>📊 Quick Stats</h2>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="dash-total-thoughts">0</div>
+                            <div class="stat-label">Total Thoughts</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="dash-total-tasks">0</div>
+                            <div class="stat-label">Total Tasks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="dash-today-thoughts">0</div>
+                            <div class="stat-label">Today</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="dash-week-thoughts">0</div>
+                            <div class="stat-label">This Week</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Thoughts -->
+                <div class="card">
+                    <h2>💭 Recent Thoughts</h2>
+                    <div id="dash-recent-thoughts" class="thought-list"></div>
+                </div>
+
+                <!-- Top Tags -->
+                <div class="card">
+                    <h2>🏷️ Top Tags</h2>
+                    <div id="dash-top-tags" class="tag-cloud"></div>
+                </div>
+
+                <!-- Active Tasks -->
+                <div class="card">
+                    <h2>✅ Active Tasks</h2>
+                    <div id="dash-active-tasks" class="task-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thoughts View -->
+        <div id="thoughts-view" class="view">
+            <div class="view-header">
+                <h2>💭 All Thoughts</h2>
+                <div class="controls">
+                    <input type="search" id="thought-search" placeholder="Search thoughts..." class="search-input">
+                    <select id="thought-filter" class="filter-select">
+                        <option value="all">All Thoughts</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                    <select id="tag-filter" class="filter-select">
+                        <option value="">All Tags</option>
+                    </select>
+                </div>
+            </div>
+            <div id="thoughts-list" class="thoughts-container"></div>
+        </div>
+
+        <!-- Tasks View -->
+        <div id="tasks-view" class="view">
+            <div class="view-header">
+                <h2>✅ All Tasks</h2>
+                <div class="controls">
+                    <select id="task-status-filter" class="filter-select">
+                        <option value="all">All Tasks</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                    <select id="task-priority-filter" class="filter-select">
+                        <option value="all">All Priorities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+            </div>
+            <div id="tasks-list" class="tasks-container"></div>
+        </div>
+
+        <!-- Statistics View -->
+        <div id="stats-view" class="view">
+            <h2>📈 Statistics & Insights</h2>
+            <div class="stats-grid">
+                <!-- Capture Timeline -->
+                <div class="card">
+                    <h3>📅 Capture Timeline (Last 7 Days)</h3>
+                    <div id="timeline-chart" class="chart"></div>
+                </div>
+
+                <!-- Tag Distribution -->
+                <div class="card">
+                    <h3>🏷️ Tag Distribution</h3>
+                    <div id="tag-distribution" class="tag-stats"></div>
+                </div>
+
+                <!-- Hourly Patterns -->
+                <div class="card">
+                    <h3>🕐 Hourly Patterns</h3>
+                    <div id="hourly-chart" class="chart"></div>
+                </div>
+
+                <!-- Task Statistics -->
+                <div class="card">
+                    <h3>✅ Task Statistics</h3>
+                    <div id="task-stats" class="stats-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="toast hidden"></div>
+
+    <script src="config.js?v=2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
