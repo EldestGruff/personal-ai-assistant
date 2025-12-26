@@ -318,7 +318,16 @@ Analysis:"""
                     self._models_url,
                     timeout=5.0
                 )
-                return response.status_code == 200
+                if response.status_code == 200:
+                    logger.info(f"OpenAI health check: SUCCESS (HTTP {response.status_code})")
+                    return True
+                else:
+                    logger.warning(f"OpenAI health check: FAILED - HTTP {response.status_code}")
+                    return False
                 
-        except Exception:
+        except Exception as e:
+            logger.error(
+                f"OpenAI health check: EXCEPTION - {type(e).__name__}: {str(e)} "
+                f"(URL: {self._models_url})"
+            )
             return False
