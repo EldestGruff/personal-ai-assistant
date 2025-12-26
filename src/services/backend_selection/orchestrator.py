@@ -162,8 +162,8 @@ class BackendOrchestrator:
             
             logger.warning(
                 f"[{request.request_id}] Recoverable error from "
-                f"'{choice.name}': {result.error.error_code}. "
-                f"Will try fallback."
+                f"'{choice.name}': {result.error.error_code} - "
+                f"{result.error.error_message}. Will try fallback."
             )
         
         # Try fallback backend(s)
