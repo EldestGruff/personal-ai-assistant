@@ -117,6 +117,10 @@ class OpenAICompatibleBackend:
             return self._build_timeout_error(request)
         
         except httpx.ConnectError as e:
+            logger.error(
+                f"[{request.request_id}] httpx.ConnectError connecting to {self._chat_url}: "
+                f"Type={type(e).__name__}, Message={str(e)}, Args={e.args}"
+            )
             return self._build_unavailable_error(request, str(e))
         
         except Exception as e:
