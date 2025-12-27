@@ -25,6 +25,16 @@ from src.models.base import Base, utc_now
 from src.models.enums import ThoughtStatus, TaskStatus, Priority
 from src.models.user import UserDB
 
+# CRITICAL: Import ALL DB models before Base.metadata.create_all()
+# SQLAlchemy needs all models registered to resolve relationships
+# (e.g., ScheduledAnalysisDB -> ClaudeAnalysisDB)
+from src.models.thought import ThoughtDB
+from src.models.task import TaskDB
+from src.models.context import ContextDB
+from src.models.analysis import ClaudeAnalysisDB
+from src.models.settings import UserSettingsDB
+from src.models.scheduled_analysis import ScheduledAnalysisDB
+
 
 # Use in-memory SQLite for tests (isolated, fast)
 TEST_DATABASE_URL = "sqlite:///:memory:"

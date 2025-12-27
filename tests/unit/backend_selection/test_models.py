@@ -159,12 +159,12 @@ class TestBackendChoice:
         assert "timeout_seconds" in str(exc.value)
     
     def test_timeout_too_high(self):
-        """Timeout must be <= 60"""
+        """Timeout must be <= 300"""
         with pytest.raises(ValidationError) as exc:
             BackendChoice(
                 name="claude",
                 role="primary",
-                timeout_seconds=61
+                timeout_seconds=301
             )
         
         assert "timeout_seconds" in str(exc.value)

@@ -165,8 +165,8 @@ class TestDefaultSelectorTimeouts:
         assert response.backends[0].timeout_seconds == 30
     
     @pytest.mark.asyncio
-    async def test_ollama_timeout_is_60s(self):
-        """Ollama gets 60s timeout (large models)"""
+    async def test_ollama_timeout_is_120s(self):
+        """Ollama gets 120s timeout (large models)"""
         config = BackendConfig(
             primary_backend="ollama"
         )
@@ -180,7 +180,7 @@ class TestDefaultSelectorTimeouts:
         
         response = await selector.select_backends(request)
         
-        assert response.backends[0].timeout_seconds == 60
+        assert response.backends[0].timeout_seconds == 120
     
     @pytest.mark.asyncio
     async def test_mock_timeout_is_5s(self):
