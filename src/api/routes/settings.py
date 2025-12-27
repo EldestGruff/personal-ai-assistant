@@ -43,7 +43,7 @@ async def get_settings(
     """
     try:
         settings = settings_service.get_user_settings(user_id)
-        return APIResponse.success(data=settings.model_dump())
+        return APIResponse.success(data=settings.model_dump(mode="json"))
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -93,7 +93,7 @@ async def update_settings(
             )
         
         return APIResponse.success(
-            data=new_settings.model_dump(),
+            data=new_settings.model_dump(mode="json"),
             message=message
         )
         
@@ -136,7 +136,7 @@ async def reset_settings(
         )
         
         return APIResponse.success(
-            data=settings.model_dump(),
+            data=settings.model_dump(mode="json"),
             message="Settings reset to defaults"
         )
         

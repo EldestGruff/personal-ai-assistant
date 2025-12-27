@@ -94,7 +94,7 @@ async def get_history(
     )
     
     return APIResponse.success(data={
-        "analyses": [a.model_dump() for a in history.analyses],
+        "analyses": [a.model_dump(mode="json") for a in history.analyses],
         "pagination": {
             "total": history.total,
             "limit": history.limit,
@@ -148,7 +148,7 @@ async def get_latest(
             pass  # Analysis result may have been deleted
     
     return APIResponse.success(data={
-        "scheduled_analysis": analysis.model_dump(),
+        "scheduled_analysis": analysis.model_dump(mode="json"),
         "analysis_result": analysis_result
     })
 
@@ -210,7 +210,7 @@ async def get_analysis_by_id(
                 detail="You don't have permission to view this analysis"
             )
         
-        return APIResponse.success(data=analysis.model_dump())
+        return APIResponse.success(data=analysis.model_dump(mode="json"))
         
     except NotFoundError as e:
         raise HTTPException(
