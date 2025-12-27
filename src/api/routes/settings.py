@@ -93,8 +93,7 @@ async def update_settings(
             )
         
         return APIResponse.success(
-            data=new_settings.model_dump(mode="json"),
-            message=message
+            data=new_settings.model_dump(mode="json")
         )
         
     except NotFoundError as e:
@@ -136,8 +135,7 @@ async def reset_settings(
         )
         
         return APIResponse.success(
-            data=settings.model_dump(mode="json"),
-            message="Settings reset to defaults"
+            data=settings.model_dump(mode="json")
         )
         
     except NotFoundError as e:
