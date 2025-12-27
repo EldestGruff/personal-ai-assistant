@@ -447,7 +447,18 @@ async def enhanced_consciousness_check(
     depth_config = depth_configs.get(request_body.depth, depth_configs["smart"])
     
     # Run enhanced analysis
-    service = EnhancedConsciousnessCheckService(db, orchestrator)
+    from ...services.settings_service import SettingsService
+    from ...services.user_profile_service import UserProfileService
+    
+    settings_service = SettingsService(db)
+    profile_service = UserProfileService(db)
+    
+    service = EnhancedConsciousnessCheckService(
+        db=db,
+        ai_orchestrator=orchestrator,
+        settings_service=settings_service,
+        user_profile_service=profile_service
+    )
     result = await service.run_consciousness_check(
         user_id=user_id,
         depth_config=depth_config,

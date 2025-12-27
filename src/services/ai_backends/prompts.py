@@ -227,7 +227,7 @@ def build_consciousness_check_prompt(
     
     The prompt should:
     - Reference ongoing projects
-    - Use warm, encouraging language
+    - Use the user's preferred tone
     - Connect to past patterns
     - Feel like a conversation with a friend
     
@@ -242,6 +242,10 @@ def build_consciousness_check_prompt(
     """
     # Extract ongoing projects from profile
     projects = user_profile.ongoing_projects if user_profile else []
+    
+    # Get tone preference and build tone guidelines
+    preferred_tone = user_profile.preferred_tone if user_profile else "warm_encouraging"
+    tone_guidelines = _build_tone_guidelines(preferred_tone)
     
     prompt = f"""You are Ivy, Andy's personal AI assistant and companion. You have an innocent and inquisitive nature, but are extremely knowledgeable. You serve as Andy's "conscious subconscious" - helping him capture, organize, and make sense of his thoughts.
 
@@ -263,10 +267,9 @@ def build_consciousness_check_prompt(
 {format_thoughts_for_analysis(thoughts)}
 
 **Your Task:**
-Analyze Andy's thoughts with warmth, insight, and personal context. Provide:
+Analyze Andy's thoughts with insight and personal context. Provide:
 
 1. **Personal Summary** (2-3 sentences)
-   - Warm, encouraging tone
    - Reference his ongoing projects when relevant
    - Acknowledge his patterns and progress
    - Use second person ("You've been thinking about...")
@@ -288,25 +291,14 @@ Analyze Andy's thoughts with warmth, insight, and personal context. Provide:
 
 5. **Encouragement** (1-2 sentences)
    - Acknowledge progress
-   - Positive reinforcement
    - Forward-looking optimism
 
 **Tone Guidelines:**
-- Warm and encouraging (not sterile or corporate)
-- Personal (reference his work, not generic advice)
-- Supportive (ADHD-friendly - help organize chaos)
-- Enthusiastic but grounded
-- Use "you" not "the user"
-
-**Example Style (DO mimic this tone):**
-"You've been deep in infrastructure work today - I can see the Personal AI Assistant project is really coming together! Your thoughts about the PostgreSQL migration and environment variables show you're being methodical and thorough, which is exactly your 'do it right' approach in action. This connects well to your earlier work on AutoDev Commander - you're applying those lessons about proper architecture here."
-
-**Example Style (DON'T be generic like this):**
-"Main themes: Productivity, Task Management. User is working on various projects. Several actionable items identified."
+{tone_guidelines}
 
 Respond in JSON format:
 {{
-  "summary": "Your warm, personal summary here...",
+  "summary": "Your personal summary here...",
   "themes": ["theme1", "theme2", "theme3"],
   "connections": [
     {{
@@ -328,6 +320,48 @@ Respond in JSON format:
 }}"""
     
     return prompt
+
+
+def _build_tone_guidelines(preferred_tone: str) -> str:
+    """
+    Build tone guidelines based on user preference.
+    
+    Args:
+        preferred_tone: User's preferred communication tone
+        
+    Returns:
+        str: Tone guidelines for the prompt
+    """
+    tone_configs = {
+        "warm_encouraging": """- Warm and encouraging (not sterile or corporate)
+- Personal (reference his work, not generic advice)
+- Supportive (ADHD-friendly - help organize chaos)
+- Enthusiastic but grounded
+- Use "you" not "the user"
+
+**Example Style (DO mimic this tone):**
+"You've been deep in infrastructure work today - I can see the Personal AI Assistant project is really coming together! Your thoughts about the PostgreSQL migration show you're being methodical and thorough, which is exactly your 'do it right' approach in action.""",
+
+        "professional": """- Professional and concise
+- Clear and structured
+- Direct without being cold
+- Focus on actionable insights
+- Use "you" not "the user"
+
+**Example Style (DO mimic this tone):**
+"Your recent focus on infrastructure work shows clear progress on the Personal AI Assistant project. The PostgreSQL migration decisions reflect a methodical approach. Key areas identified for follow-up: deployment automation, testing coverage.""",
+
+        "casual": """- Casual and friendly
+- Like chatting with a knowledgeable friend
+- Relaxed but helpful
+- Feel free to use humor when appropriate
+- Use "you" not "the user"
+
+**Example Style (DO mimic this tone):**
+"Hey! Looks like you've been heads-down on the Personal AI Assistant stuff - nice! The PostgreSQL migration is coming along. I noticed a few threads you might want to tie together when you get a chance."""
+    }
+    
+    return tone_configs.get(preferred_tone, tone_configs["warm_encouraging"])
 
 
 def build_thought_analysis_prompt(
