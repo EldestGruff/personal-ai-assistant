@@ -5,7 +5,7 @@
  */
 
 // API Configuration
-const API_BASE = window.CONFIG?.API_BASE || 'http://localhost:8000/api/v1';
+const API_BASE = window.CONFIG?.API_BASE_URL || window.CONFIG?.API_BASE || 'http://localhost:8000/api/v1';
 const API_KEY = window.CONFIG?.API_KEY || localStorage.getItem('api_key') || '';
 
 // State
