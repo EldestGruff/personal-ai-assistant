@@ -107,9 +107,7 @@ async def update_profile(
         
         profile = await service.update_profile(user_id, updates)
         
-        return APIResponse.success(data=profile.to_response().model_dump(mode="json"),
-            message="Profile updated successfully"
-        )
+        return APIResponse.success(data=profile.to_response().model_dump(mode="json"))
         
     except ValueError as e:
         raise APIError(
@@ -154,9 +152,7 @@ async def add_project(
             description=request.description
         )
         
-        return APIResponse.success(data=profile.to_response().model_dump(mode="json"),
-            message=f"Project '{request.name}' added"
-        )
+        return APIResponse.success(data=profile.to_response().model_dump(mode="json"))
         
     except ValueError as e:
         raise APIError(
@@ -200,9 +196,7 @@ async def update_project_status(
             new_status=request.status
         )
         
-        return APIResponse.success(data=profile.to_response().model_dump(mode="json"),
-            message=f"Project '{project_name}' status updated to {request.status}"
-        )
+        return APIResponse.success(data=profile.to_response().model_dump(mode="json"))
         
     except ValueError as e:
         raise APIError(
@@ -240,9 +234,7 @@ async def remove_project(
         
         profile = await service.remove_project(user_id, project_name)
         
-        return APIResponse.success(data=profile.to_response().model_dump(mode="json"),
-            message=f"Project '{project_name}' removed"
-        )
+        return APIResponse.success(data=profile.to_response().model_dump(mode="json"))
         
     except Exception as e:
         logger.error(f"Error removing project: {e}")
