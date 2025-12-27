@@ -18,7 +18,8 @@ from ...models import (
     ThoughtCreate,
     ThoughtUpdate,
     ThoughtResponse,
-    ThoughtStatus
+    ThoughtStatus,
+    ThoughtDB,
 )
 from ...services.thought_service import ThoughtService
 from ...services.thought_intelligence_service import ThoughtIntelligenceService
