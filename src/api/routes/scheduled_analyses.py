@@ -108,48 +108,54 @@ async def get_history(
 async def get_latest(
     api_key: str = Depends(verify_api_key),
     user_id: str = Depends(get_current_user_id),
-    scheduled_service: ScheduledAnalysisService = Depends(get_scheduled_service),
     db: Session = Depends(get_db)
 ):
     """
     Get the most recent completed consciousness check result.
     
-    Returns the scheduled analysis record along with the full
-    Claude analysis result if available.
+    Returns the analysis in dashboard-compatible format.
     
     Returns:
-        Latest completed analysis with result details
+        Latest analysis with summary, themes, actions, timestamp
     """
-    analysis = scheduled_service.get_last_completed_check(user_id)
+    from ...models import ClaudeAnalysisDB, AnalysisType
+    
+    # Get latest consciousness check from claude_analysis_results
+    analysis = db.query(ClaudeAnalysisDB).filter(
+        ClaudeAnalysisDB.user_id == user_id,
+        ClaudeAnalysisDB.analysis_type == AnalysisType.CONSCIOUSNESS_CHECK.value
+    ).order_by(
+        ClaudeAnalysisDB.created_at.desc()
+    ).first()
     
     if not analysis:
-        return APIResponse.success(
-            data=None,
-            message="No completed consciousness checks found"
-        )
+        return APIResponse.success(data={
+            "summary": "No consciousness checks have been run yet. The scheduler will run checks automatically, or you can trigger one manually.",
+            "themes": [],
+            "suggested_actions": [],
+            "source_analyses": 0,
+            "timestamp": None,
+            "backend_stats": {}
+        })
     
-    # Get the Claude analysis result if available
-    analysis_result = None
-    if analysis.analysis_result_id:
-        from ...services.claude_analysis_service import ClaudeAnalysisService
-        claude_service = ClaudeAnalysisService(db)
-        try:
-            result = claude_service.get_analysis(str(analysis.analysis_result_id))
-            if result:
-                analysis_result = {
-                    "id": str(result.id),
-                    "summary": result.summary,
-                    "themes": result.themes,
-                    "suggested_action": result.suggested_action,
-                    "confidence": result.confidence,
-                    "tokens_used": result.tokens_used
-                }
-        except Exception:
-            pass  # Analysis result may have been deleted
+    # Extract data from raw_response if available
+    raw = analysis.raw_response or {}
     
+    # Build dashboard-compatible response
     return APIResponse.success(data={
-        "scheduled_analysis": analysis.model_dump(mode="json"),
-        "analysis_result": analysis_result
+        "summary": analysis.summary or "Analysis completed.",
+        "themes": analysis.themes or raw.get("themes", []),
+        "suggested_actions": raw.get("suggested_actions", []),
+        "source_analyses": raw.get("metadata", {}).get("thoughts_analyzed", 0),
+        "timestamp": analysis.created_at.isoformat() if analysis.created_at else None,
+        "backend_stats": {
+            "stored": {
+                "tokens_used": analysis.tokens_used,
+                "processing_time_ms": raw.get("metadata", {}).get("duration_ms")
+            }
+        },
+        "encouragement": raw.get("encouragement"),
+        "connections": raw.get("connections", [])
     })
 
 

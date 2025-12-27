@@ -107,7 +107,7 @@ const api = {
     },
 
     async getConsciousnessCheck(limitRecent = 20) {
-        // Map local state thoughts to the format expected by the API
+        // Manual trigger - runs a new check (used by "Run Now" button)
         const recentThoughts = state.thoughts.slice(0, limitRecent).map(t => ({
             id: t.id,
             content: t.content
@@ -125,9 +125,9 @@ const api = {
     },
 
     async getLatestConsciousnessCheck() {
-        // For now, just do a fresh check (no "latest" endpoint yet)
-        // This will use cached backend selection and be fast
-        return await this.getConsciousnessCheck(20);
+        // Load latest cached result from database (no new analysis)
+        const response = await this.request('/consciousness-check/latest');
+        return response;
     },
 
     async createThought(content, tags = [], context = {}) {
@@ -436,16 +436,23 @@ const ui = {
         container.innerHTML = `
             <div class="insights-loading">
                 <div class="spinner-small"></div>
-                <span>${forceRefresh ? 'Analyzing your recent thoughts...' : 'Loading latest insights...'}</span>
+                <span>${forceRefresh ? 'Running new analysis...' : 'Loading latest insights...'}</span>
             </div>
         `;
 
         try {
-            // New v2 endpoint - always fetch fresh analysis
-            const response = await api.getConsciousnessCheck(20);
+            let response;
+            
+            if (forceRefresh) {
+                // Manual refresh - run a new consciousness check
+                response = await api.getConsciousnessCheck(20);
+            } else {
+                // Page load - just get the latest cached result
+                response = await api.getLatestConsciousnessCheck();
+            }
 
             if (!response || !response.summary) {
-                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Waiting for first analysis');
+                container.innerHTML = this.emptyState('🤖', 'No insights yet', 'Scheduler will run checks automatically every 30 minutes');
                 state.consciousnessCheck.isLoading = false;
                 return;
             }
@@ -454,7 +461,7 @@ const ui = {
             state.consciousnessCheck.lastCheck = response;
             state.consciousnessCheck.isLoading = false;
 
-            // Display the insights (new v2 format)
+            // Display the insights
             this.displayClaudeInsightsV2(response);
 
         } catch (error) {
@@ -463,7 +470,7 @@ const ui = {
             container.innerHTML = `
                 <div class="insights-error">
                     <p>⚠️ Failed to load AI insights</p>
-                    <button onclick="ui.renderClaudeInsights(true)" class="btn-retry">Retry</button>
+                    <button onclick="ui.renderClaudeInsights(true)" class="btn-retry">Run New Check</button>
                 </div>
             `;
         }
