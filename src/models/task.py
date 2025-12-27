@@ -11,6 +11,7 @@ from uuid import UUID
 
 from pydantic import Field, field_validator
 from sqlalchemy import Column, Date, Integer, JSON, String, Text, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 
 from .base import (
     BaseTimestampModel,
@@ -192,6 +193,8 @@ class TaskDB(BaseDBModel):
     
     Mirrors TaskResponse but optimized for database storage.
     Uses proper column types and foreign key relationships.
+    
+    Phase 3B Spec 2: Added relationships for source_thought and source_suggestion.
     """
     
     __tablename__ = "tasks"
@@ -219,7 +222,20 @@ class TaskDB(BaseDBModel):
     completed_at = Column(TZDateTime, nullable=True)
     linked_reminders = Column(JSON, nullable=False, default=list)
     subtasks = Column(JSON, nullable=False, default=list)
-
+    
+    # Relationships
+    # Note: This links Task to the Thought it was created FROM
+    # Different from ThoughtDB.task which links Thought TO a task
+    source_thought = relationship(
+        "ThoughtDB",
+        foreign_keys=[source_thought_id],
+        uselist=False
+    )
+    source_suggestion = relationship(
+        "TaskSuggestionDB",
+        back_populates="created_task",
+        uselist=False
+    )
     
     def __repr__(self) -> str:
         """String representation for debugging."""

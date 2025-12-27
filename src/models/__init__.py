@@ -37,6 +37,14 @@ from .enums import (
     SettingsDepthType,
     TaskSuggestionMode,
     ScheduledAnalysisStatus,
+    # Phase 3B Spec 2: AI Intelligence enums
+    ThoughtType,
+    EmotionalTone,
+    Urgency,
+    TaskSuggestionStatus,
+    TaskSuggestionUserAction,
+    PreferredTone,
+    DetailLevel,
 )
 
 
@@ -95,6 +103,26 @@ from .scheduled_analysis import (
     ScheduledAnalysisDB,
 )
 
+# Phase 3B Spec 2: User profile models
+from .user_profile import (
+    OngoingProject,
+    ThoughtPattern,
+    UserProfileCreate,
+    UserProfileUpdate,
+    UserProfileResponse,
+    UserProfileDB,
+)
+
+# Phase 3B Spec 2: Task suggestion models
+from .task_suggestion import (
+    SuggestedTag,
+    TaskSuggestionFromAnalysis,
+    TaskSuggestionCreate,
+    TaskSuggestionAccept,
+    TaskSuggestionResponse,
+    TaskSuggestionDB,
+)
+
 
 # Export all models for clean imports
 __all__ = [
@@ -121,6 +149,14 @@ __all__ = [
     "SettingsDepthType",
     "TaskSuggestionMode",
     "ScheduledAnalysisStatus",
+    # Phase 3B Spec 2: AI Intelligence enums
+    "ThoughtType",
+    "EmotionalTone",
+    "Urgency",
+    "TaskSuggestionStatus",
+    "TaskSuggestionUserAction",
+    "PreferredTone",
+    "DetailLevel",
     # User models
     "UserCreate",
     "UserUpdate",
@@ -155,4 +191,18 @@ __all__ = [
     "ScheduledAnalysisResponse",
     "ScheduledAnalysisHistoryResponse",
     "ScheduledAnalysisDB",
+    # Phase 3B Spec 2: User profile models
+    "OngoingProject",
+    "ThoughtPattern",
+    "UserProfileCreate",
+    "UserProfileUpdate",
+    "UserProfileResponse",
+    "UserProfileDB",
+    # Phase 3B Spec 2: Task suggestion models
+    "SuggestedTag",
+    "TaskSuggestionFromAnalysis",
+    "TaskSuggestionCreate",
+    "TaskSuggestionAccept",
+    "TaskSuggestionResponse",
+    "TaskSuggestionDB",
 ]

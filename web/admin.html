@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal AI - Admin Settings</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Admin-specific styles */
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color, #e0e0e0);
+        }
+        
+        .admin-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--primary-color, #2c3e50);
+        }
+        
+        .back-link {
+            color: var(--link-color, #3498db);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--border-color, #e0e0e0);
+            padding-bottom: 10px;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-muted, #666);
+            border-radius: 5px 5px 0 0;
+            transition: all 0.2s;
+        }
+        
+        .tab-btn:hover {
+            background: var(--hover-bg, #f5f5f5);
+        }
+        
+        .tab-btn.active {
+            color: var(--primary-color, #2c3e50);
+            background: var(--active-bg, #e8f4fc);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .settings-section {
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border-color, #e0e0e0);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .settings-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--primary-color, #2c3e50);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .settings-section h3 .icon {
+            font-size: 1.2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-color, #333);
+        }
+        
+        .form-group .hint {
+            font-size: 0.85rem;
+            color: var(--text-muted, #666);
+            margin-top: 3px;
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 5px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color, #3498db);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--success-color, #27ae60);
+        }
+        
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color, #3498db);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover, #2980b9);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary-color, #95a5a6);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--secondary-hover, #7f8c8d);
+        }
+        
+        .btn-danger {
+            background: var(--danger-color, #e74c3c);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: var(--danger-hover, #c0392b);
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .project-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border-color, #e0e0e0);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: var(--item-bg, #fafafa);
+        }
+        
+        .project-item .project-info {
+            flex: 1;
+        }
+        
+        .project-item .project-name {
+            font-weight: 600;
+            color: var(--text-color, #333);
+        }
+        
+        .project-item .project-status {
+            font-size: 0.85rem;
+            color: var(--text-muted, #666);
+        }
+        
+        .project-item .project-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-paused {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-completed {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .interest-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .interest-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: var(--tag-bg, #e8f4fc);
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .interest-tag .remove-tag {
+            cursor: pointer;
+            color: var(--text-muted, #666);
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+        
+        .interest-tag .remove-tag:hover {
+            color: var(--danger-color, #e74c3c);
+        }
+        
+        .add-inline {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .add-inline input {
+            flex: 1;
+        }
+        
+        .schedule-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: var(--schedule-bg, #f8f9fa);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .schedule-icon {
+            font-size: 2rem;
+        }
+        
+        .schedule-info {
+            flex: 1;
+        }
+        
+        .schedule-info .schedule-status {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .schedule-info .schedule-detail {
+            font-size: 0.9rem;
+            color: var(--text-muted, #666);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.running {
+            background: var(--success-color, #27ae60);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.stopped {
+            background: var(--danger-color, #e74c3c);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast.success {
+            background: var(--success-color, #27ae60);
+        }
+        
+        .toast.error {
+            background: var(--danger-color, #e74c3c);
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #3498db;
+                --text-color: #e0e0e0;
+                --text-muted: #a0a0a0;
+                --bg-color: #1a1a1a;
+                --card-bg: #2d2d2d;
+                --border-color: #404040;
+                --hover-bg: #383838;
+                --active-bg: #1a3a4a;
+                --item-bg: #333;
+                --tag-bg: #1a3a4a;
+                --schedule-bg: #333;
+            }
+            
+            body {
+                background: var(--bg-color);
+                color: var(--text-color);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>⚙️ Admin Settings</h1>
+            <a href="index.html" class="back-link">← Back to Dashboard</a>
+        </div>
+        
+        <div class="tab-container">
+            <button class="tab-btn active" data-tab="settings">🤖 AI Settings</button>
+            <button class="tab-btn" data-tab="profile">👤 Profile</button>
+            <button class="tab-btn" data-tab="scheduler">⏰ Scheduler</button>
+        </div>
+        
+        <!-- AI Settings Tab -->
+        <div id="settings-tab" class="tab-content active">
+            <div class="settings-section">
+                <h3><span class="icon">🧠</span> AI Backend Configuration</h3>
+                
+                <div class="form-group">
+                    <label for="primary-backend">Primary Backend</label>
+                    <select id="primary-backend">
+                        <option value="claude">Claude (Anthropic)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="openai">OpenAI Compatible</option>
+                    </select>
+                    <div class="hint">The main AI backend for analysis</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fallback-backend">Fallback Backend</label>
+                    <select id="fallback-backend">
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="claude">Claude (Anthropic)</option>
+                        <option value="openai">OpenAI Compatible</option>
+                        <option value="none">None</option>
+                    </select>
+                    <div class="hint">Used when primary is unavailable</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model-preference">Model Preference</label>
+                    <input type="text" id="model-preference" placeholder="e.g., claude-3-sonnet, llama3.2">
+                    <div class="hint">Preferred model for the selected backend</div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">🏷️</span> Auto-Tagging</h3>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-tagging-enabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Enable automatic tag suggestions</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max-tags">Maximum Tags per Thought</label>
+                    <input type="number" id="max-tags" value="3" min="1" max="10">
+                    <div class="hint">How many tags to suggest (1-10)</div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">✅</span> Task Detection</h3>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-task-enabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Enable automatic task detection</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="task-confidence">Minimum Confidence</label>
+                    <input type="number" id="task-confidence" value="0.7" min="0.5" max="1.0" step="0.05">
+                    <div class="hint">Only suggest tasks above this confidence (0.5-1.0)</div>
+                </div>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="require-confirmation" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Require confirmation before creating tasks</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">💭</span> Consciousness Checks</h3>
+                
+                <div class="form-group">
+                    <label for="consciousness-depth">Default Depth</label>
+                    <select id="consciousness-depth">
+                        <option value="quick">Quick (5 thoughts, 1 day)</option>
+                        <option value="standard" selected>Standard (10 thoughts, 3 days)</option>
+                        <option value="deep">Deep (20 thoughts, 7 days)</option>
+                        <option value="smart">Smart (adaptive)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="include-archived">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Include archived thoughts in analysis</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                <button class="btn btn-secondary" onclick="loadSettings()">🔄 Reset</button>
+            </div>
+        </div>
+        
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-content">
+            <div class="settings-section">
+                <h3><span class="icon">📂</span> Ongoing Projects</h3>
+                
+                <ul class="project-list" id="project-list">
+                    <!-- Projects loaded dynamically -->
+                </ul>
+                
+                <div class="add-inline">
+                    <input type="text" id="new-project-name" placeholder="Project name">
+                    <input type="text" id="new-project-description" placeholder="Description (optional)">
+                    <button class="btn btn-primary btn-sm" onclick="addProject()">+ Add</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">⭐</span> Interests</h3>
+                
+                <div class="interest-tags" id="interest-tags">
+                    <!-- Tags loaded dynamically -->
+                </div>
+                
+                <div class="add-inline">
+                    <input type="text" id="new-interest" placeholder="Add an interest...">
+                    <button class="btn btn-primary btn-sm" onclick="addInterest()">+ Add</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">💼</span> Work Style</h3>
+                
+                <div class="form-group">
+                    <label for="work-style">Work Style Description</label>
+                    <textarea id="work-style" placeholder="e.g., I prefer deep work sessions of 90 minutes, take breaks to walk..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adhd-considerations">ADHD Considerations</label>
+                    <textarea id="adhd-considerations" placeholder="e.g., I need reminders for context switching, prefer short tasks..."></textarea>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">💬</span> AI Preferences</h3>
+                
+                <div class="form-group">
+                    <label for="preferred-tone">Preferred Tone</label>
+                    <select id="preferred-tone">
+                        <option value="warm_encouraging">Warm & Encouraging</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="detail-level">Detail Level</label>
+                    <select id="detail-level">
+                        <option value="brief">Brief</option>
+                        <option value="moderate" selected>Moderate</option>
+                        <option value="comprehensive">Comprehensive</option>
+                    </select>
+                </div>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="reference-past-work" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Reference my past work and projects in analysis</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+                <button class="btn btn-secondary" onclick="loadProfile()">🔄 Reset</button>
+            </div>
+        </div>
+        
+        <!-- Scheduler Tab -->
+        <div id="scheduler-tab" class="tab-content">
+            <div class="settings-section">
+                <h3><span class="icon">📅</span> Consciousness Check Schedule</h3>
+                
+                <div class="schedule-display" id="schedule-display">
+                    <div class="schedule-icon">⏰</div>
+                    <div class="schedule-info">
+                        <div class="schedule-status">
+                            <span class="status-indicator stopped" id="schedule-indicator"></span>
+                            <span id="schedule-status-text">Loading...</span>
+                        </div>
+                        <div class="schedule-detail" id="schedule-detail">
+                            Checking schedule...
+                        </div>
+                    </div>
+                    <div class="schedule-actions">
+                        <button class="btn btn-sm btn-primary" id="toggle-schedule-btn" onclick="toggleSchedule()">
+                            Start
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="schedule-interval">Check Interval (minutes)</label>
+                    <input type="number" id="schedule-interval" value="30" min="5" max="480">
+                    <div class="hint">How often to run consciousness checks (5-480 minutes)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="active-hours-start">Active Hours Start</label>
+                    <input type="time" id="active-hours-start" value="09:00">
+                </div>
+                
+                <div class="form-group">
+                    <label for="active-hours-end">Active Hours End</label>
+                    <input type="time" id="active-hours-end" value="18:00">
+                </div>
+                
+                <div class="form-group toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="weekend-enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Run on weekends</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3><span class="icon">📊</span> Recent Scheduled Analyses</h3>
+                
+                <div id="recent-analyses">
+                    <p style="color: var(--text-muted);">No recent analyses. Schedule will populate results here.</p>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="saveSchedule()">💾 Save Schedule</button>
+                <button class="btn btn-secondary" onclick="runNow()">▶️ Run Now</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+    
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

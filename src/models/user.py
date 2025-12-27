@@ -161,6 +161,24 @@ class UserDB(BaseDBModel):
         cascade="all, delete-orphan"
     )
     
+    # Phase 3B Spec 2: New relationships
+    profile = relationship(
+        "UserProfileDB",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    thoughts = relationship(
+        "ThoughtDB",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    task_suggestions = relationship(
+        "TaskSuggestionDB",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
     def __repr__(self) -> str:
         """String representation for debugging."""
         return (

@@ -11,6 +11,8 @@ from .claude import router as claude_router
 from .consciousness_v2 import router as consciousness_v2_router
 from .settings import router as settings_router
 from .scheduled_analyses import router as scheduled_analyses_router
+from .profile import router as profile_router
+from .task_suggestions import router as task_suggestions_router
 
 __all__ = [
     "health_router",
@@ -20,4 +22,6 @@ __all__ = [
     "consciousness_v2_router",
     "settings_router",
     "scheduled_analyses_router",
+    "profile_router",
+    "task_suggestions_router",
 ]

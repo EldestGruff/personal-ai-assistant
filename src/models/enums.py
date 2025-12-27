@@ -221,3 +221,125 @@ class ScheduledAnalysisStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+# =============================================================================
+# Phase 3B Spec 2: Enhanced AI Intelligence Enums
+# =============================================================================
+
+class ThoughtType(str, Enum):
+    """
+    Detected intent/type of a thought.
+    
+    Classified by AI at capture time to enable intelligent routing.
+    - TASK: Actionable item requiring follow-up
+    - NOTE: Information for reference, no action needed
+    - REMINDER: Time-sensitive item to remember
+    - QUESTION: Something to research or explore
+    - IDEA: Creative concept for future consideration
+    - JOURNAL: Personal reflection or status update
+    """
+    TASK = "task"
+    NOTE = "note"
+    REMINDER = "reminder"
+    QUESTION = "question"
+    IDEA = "idea"
+    JOURNAL = "journal"
+
+
+class EmotionalTone(str, Enum):
+    """
+    Detected emotional tone of a thought.
+    
+    Helps AI understand context and provide appropriate responses.
+    - FRUSTRATED: User experiencing difficulty or annoyance
+    - EXCITED: User enthusiastic about something
+    - CURIOUS: User exploring or questioning
+    - DETERMINED: User focused on accomplishing something
+    - REFLECTIVE: User thinking back or considering
+    - NEUTRAL: No strong emotional signal
+    """
+    FRUSTRATED = "frustrated"
+    EXCITED = "excited"
+    CURIOUS = "curious"
+    DETERMINED = "determined"
+    REFLECTIVE = "reflective"
+    NEUTRAL = "neutral"
+
+
+class Urgency(str, Enum):
+    """
+    Detected urgency level of a thought.
+    
+    Inferred from content to help prioritize actions.
+    - LOW: No time pressure
+    - MEDIUM: Should address soon
+    - HIGH: Time-sensitive, needs attention
+    """
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class TaskSuggestionStatus(str, Enum):
+    """
+    Status of a task suggestion.
+    
+    Tracks user interaction with AI-generated task suggestions.
+    - PENDING: Just created, not yet shown to user
+    - PRESENTED: Shown to user, awaiting decision
+    - ACCEPTED: User created task from suggestion
+    - REJECTED: User explicitly rejected
+    - EXPIRED: Auto-expired after N days without action
+    """
+    PENDING = "pending"
+    PRESENTED = "presented"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class TaskSuggestionUserAction(str, Enum):
+    """
+    User action taken on a task suggestion.
+    
+    Tracks how users respond to suggestions for learning.
+    - ACCEPTED: Created task as-is
+    - REJECTED: Explicitly declined
+    - MODIFIED: Created task with changes
+    - IGNORED: No action taken (implicit)
+    - DELETED_THEN_RECREATED: ADHD-friendly restoration
+    """
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    MODIFIED = "modified"
+    IGNORED = "ignored"
+    DELETED_THEN_RECREATED = "deleted_then_recreated"
+
+
+class PreferredTone(str, Enum):
+    """
+    User's preferred communication tone for AI responses.
+    
+    Influences how consciousness checks and analysis are written.
+    - WARM_ENCOURAGING: Friendly, supportive, positive (default)
+    - PROFESSIONAL: Business-like, concise
+    - CASUAL: Relaxed, informal
+    """
+    WARM_ENCOURAGING = "warm_encouraging"
+    PROFESSIONAL = "professional"
+    CASUAL = "casual"
+
+
+class DetailLevel(str, Enum):
+    """
+    User's preferred detail level for AI responses.
+    
+    Controls verbosity of analysis output.
+    - BRIEF: Short, key points only
+    - MODERATE: Balanced detail (default)
+    - COMPREHENSIVE: Full analysis with all context
+    """
+    BRIEF = "brief"
+    MODERATE = "moderate"
+    COMPREHENSIVE = "comprehensive"

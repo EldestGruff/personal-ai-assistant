@@ -3,6 +3,9 @@ Thought models for the Personal AI Assistant.
 
 Defines Pydantic models for API validation and SQLAlchemy models for database
 persistence. Thoughts are the core capture mechanism for transient ideas.
+
+Phase 3B Spec 2: Enhanced with AI intelligence fields for intent classification,
+auto-tagging, and actionability detection.
 """
 
 from datetime import datetime
@@ -10,16 +13,17 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import Field, field_validator
-from sqlalchemy import Column, JSON, String, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Column, JSON, String, Text, Boolean, Float, Integer, ForeignKey
+from sqlalchemy.orm import relationship
 
 from .base import (
     BaseTimestampModel,
     BaseRequestModel,
     BaseDBModel,
+    TZDateTime,
     validate_content_length
 )
-from .enums import ThoughtStatus
+from .enums import ThoughtStatus, ThoughtType, EmotionalTone, Urgency
 
 
 class ThoughtCreate(BaseRequestModel):
@@ -134,6 +138,8 @@ class ThoughtResponse(BaseTimestampModel):
     Includes all fields including auto-generated id and timestamps.
     This is what users receive when querying thoughts.
     
+    Phase 3B Spec 2: Enhanced with AI intelligence fields.
+    
     Example:
         >>> response = ThoughtResponse(
         ...     id=UUID(...),
@@ -141,6 +147,8 @@ class ThoughtResponse(BaseTimestampModel):
         ...     content="Should improve the email spam analyzer",
         ...     tags=["email", "improvement"],
         ...     status=ThoughtStatus.ACTIVE,
+        ...     thought_type=ThoughtType.TASK,
+        ...     intent_confidence=0.85,
         ...     created_at=datetime.now(timezone.utc)
         ... )
     """
@@ -174,6 +182,52 @@ class ThoughtResponse(BaseTimestampModel):
         default=None,
         description="Task created from this thought, if any"
     )
+    
+    # Phase 3B Spec 2: AI Intelligence Fields
+    thought_type: Optional[ThoughtType] = Field(
+        default=None,
+        description="AI-detected intent type (task, note, reminder, etc.)"
+    )
+    intent_confidence: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for thought_type classification"
+    )
+    suggested_tags: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="AI-suggested tags with confidence scores"
+    )
+    related_topics: Optional[List[str]] = Field(
+        default=None,
+        description="AI-discovered related topics"
+    )
+    emotional_tone: Optional[EmotionalTone] = Field(
+        default=None,
+        description="Detected emotional tone of the thought"
+    )
+    urgency: Optional[Urgency] = Field(
+        default=None,
+        description="Detected urgency level"
+    )
+    is_actionable: Optional[bool] = Field(
+        default=None,
+        description="Whether thought requires action"
+    )
+    actionable_confidence: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence for actionability detection"
+    )
+    analysis_version: Optional[int] = Field(
+        default=None,
+        description="Version of analysis algorithm used"
+    )
+    analyzed_at: Optional[datetime] = Field(
+        default=None,
+        description="When AI analysis was performed"
+    )
 
 
 class ThoughtDB(BaseDBModel):
@@ -182,6 +236,8 @@ class ThoughtDB(BaseDBModel):
     
     Mirrors ThoughtResponse but optimized for database storage.
     Uses proper column types and foreign key relationships.
+    
+    Phase 3B Spec 2: Enhanced with AI intelligence columns.
     """
 
     
@@ -201,12 +257,32 @@ class ThoughtDB(BaseDBModel):
     related_thought_ids = Column(JSON, nullable=False, default=list)
     task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     
+    # Phase 3B Spec 2: AI Intelligence Columns
+    thought_type = Column(String(50), nullable=True)
+    intent_confidence = Column(Float, nullable=True)
+    suggested_tags = Column(JSON, nullable=True)
+    related_topics = Column(JSON, nullable=True)
+    emotional_tone = Column(String(50), nullable=True)
+    urgency = Column(String(20), nullable=True)
+    is_actionable = Column(Boolean, nullable=True)
+    actionable_confidence = Column(Float, nullable=True)
+    analysis_version = Column(Integer, nullable=True, default=1)
+    analyzed_at = Column(TZDateTime, nullable=True)
+    
+    # Relationships
+    user = relationship("UserDB", back_populates="thoughts")
+    # Note: This is a separate relationship from TaskDB.source_thought
+    # task_id links thought TO a task, source_thought_id links task FROM a thought
+    task = relationship("TaskDB", foreign_keys=[task_id], uselist=False)
+    task_suggestions = relationship("TaskSuggestionDB", back_populates="source_thought")
+    
     def __repr__(self) -> str:
         """String representation for debugging."""
         return (
             f"<ThoughtDB(id={self.id}, "
             f"user_id={self.user_id}, "
             f"status={self.status}, "
+            f"thought_type={self.thought_type}, "
             f"content_preview='{self.content[:50]}...')>"
         )
     
@@ -223,6 +299,16 @@ class ThoughtDB(BaseDBModel):
             claude_analysis=self.claude_analysis,
             related_thought_ids=self.related_thought_ids or [],
             task_id=self.task_id,
+            thought_type=ThoughtType(self.thought_type) if self.thought_type else None,
+            intent_confidence=self.intent_confidence,
+            suggested_tags=self.suggested_tags,
+            related_topics=self.related_topics,
+            emotional_tone=EmotionalTone(self.emotional_tone) if self.emotional_tone else None,
+            urgency=Urgency(self.urgency) if self.urgency else None,
+            is_actionable=self.is_actionable,
+            actionable_confidence=self.actionable_confidence,
+            analysis_version=self.analysis_version,
+            analyzed_at=self.analyzed_at,
             created_at=self.created_at,
             updated_at=self.updated_at
         )

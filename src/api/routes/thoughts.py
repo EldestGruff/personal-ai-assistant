@@ -5,11 +5,12 @@ Handles thought capture, retrieval, searching, updating, and deletion.
 Integrated with ThoughtService for database operations.
 """
 
+import asyncio
 import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status, Request
 from sqlalchemy.orm import Session
 
 from ...database.session import get_db
@@ -20,6 +21,7 @@ from ...models import (
     ThoughtStatus
 )
 from ...services.thought_service import ThoughtService
+from ...services.thought_intelligence_service import ThoughtIntelligenceService
 from ...services.exceptions import (
     NotFoundError,
     InvalidDataError,
@@ -44,9 +46,49 @@ router = APIRouter(
 )
 
 
+async def analyze_thought_background(
+    thought_id: UUID,
+    user_id: UUID,
+    orchestrator,
+    db_factory
+):
+    """
+    Background task to analyze a thought after capture.
+    
+    This runs asynchronously so the thought capture returns immediately.
+    If analysis fails, we log but don't affect the captured thought.
+    """
+    try:
+        # Get a fresh db session for background task
+        from ...database.session import get_db_context
+        
+        with get_db_context() as db:
+            intelligence_service = ThoughtIntelligenceService(db, orchestrator)
+            result = await intelligence_service.analyze_thought_on_capture(
+                thought_id=thought_id,
+                user_id=user_id
+            )
+            
+            if result:
+                logger.info(
+                    f"Analyzed thought {thought_id}: type={result.thought_type}, "
+                    f"actionable={result.is_actionable}, confidence={result.actionable_confidence:.2f}"
+                )
+                if result.should_suggest_task:
+                    logger.info(f"Created task suggestion for thought {thought_id}")
+            else:
+                logger.debug(f"Analysis skipped or disabled for thought {thought_id}")
+                
+    except Exception as e:
+        # Don't let analysis failures affect the captured thought
+        logger.error(f"Background analysis failed for thought {thought_id}: {e}")
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_thought(
     thought: ThoughtCreate,
+    request: Request,
+    background_tasks: BackgroundTasks,
     api_key: str = Depends(verify_api_key),
     db: Session = Depends(get_db)
 ):
@@ -54,6 +96,7 @@ async def create_thought(
     Capture a new thought.
     
     Takes thought content, tags, context and persists to database.
+    Triggers background AI analysis if enabled in settings.
     Returns created thought with generated ID and timestamps.
     
     Args:
@@ -74,6 +117,18 @@ async def create_thought(
             tags=thought.tags,
             context=thought.context
         )
+        
+        # Schedule background analysis if orchestrator is available
+        if hasattr(request.app.state, 'orchestrator'):
+            from ...database.session import SessionLocal
+            background_tasks.add_task(
+                analyze_thought_background,
+                thought_db.id,
+                user_id,
+                request.app.state.orchestrator,
+                SessionLocal
+            )
+            logger.debug(f"Scheduled background analysis for thought {thought_db.id}")
         
         return APIResponse.success(
             data=thought_db.to_response().model_dump(mode='json'),
