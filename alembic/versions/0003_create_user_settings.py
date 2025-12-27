@@ -52,24 +52,39 @@ def upgrade() -> None:
     op.create_index('idx_user_settings_user_id', 'user_settings', ['user_id'])
     
     # Create default settings for existing users
-    # This uses a subquery to insert settings for all existing users
-    op.execute("""
-        INSERT INTO user_settings (
-            id, user_id, 
-            consciousness_check_enabled, consciousness_check_interval_minutes,
-            consciousness_check_depth_type, consciousness_check_depth_value,
-            consciousness_check_min_thoughts,
-            auto_tagging_enabled, auto_task_creation_enabled, task_suggestion_mode,
-            created_at, updated_at
+    # Use database-agnostic approach via SQLAlchemy
+    from sqlalchemy import text
+    from uuid import uuid4
+    from datetime import datetime, timezone
+    
+    conn = op.get_bind()
+    
+    # Get all existing user IDs
+    result = conn.execute(text("SELECT id FROM users"))
+    user_ids = [row[0] for row in result]
+    
+    # Insert settings for each user
+    for user_id in user_ids:
+        settings_id = str(uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            text("""
+                INSERT INTO user_settings (
+                    id, user_id, 
+                    consciousness_check_enabled, consciousness_check_interval_minutes,
+                    consciousness_check_depth_type, consciousness_check_depth_value,
+                    consciousness_check_min_thoughts,
+                    auto_tagging_enabled, auto_task_creation_enabled, task_suggestion_mode,
+                    created_at, updated_at
+                ) VALUES (
+                    :id, :user_id, 
+                    true, 30, 'smart', 7, 10,
+                    true, true, 'suggest',
+                    :now, :now
+                )
+            """),
+            {"id": settings_id, "user_id": user_id, "now": now}
         )
-        SELECT 
-            lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(6))),
-            id,
-            1, 30, 'smart', 7, 10,
-            1, 1, 'suggest',
-            datetime('now'), datetime('now')
-        FROM users
-    """)
 
 
 def downgrade() -> None:
