@@ -24,22 +24,36 @@ class NotFoundError(ServiceError):
     
     Raised when attempting to retrieve or modify a resource
     that doesn't exist or is owned by a different user.
+    
+    Flexible constructor supports multiple calling patterns:
+    - NotFoundError("Custom message")
+    - NotFoundError("Thought", "abc-123")
     """
     
-    def __init__(self, resource_type: str, resource_id: str):
+    def __init__(self, resource_type_or_message: str, resource_id: Optional[str] = None):
         """
         Initialize not found error.
         
         Args:
-            resource_type: Type of resource (e.g., "Thought", "Task")
-            resource_id: ID of the missing resource
+            resource_type_or_message: Either a resource type (with resource_id) 
+                                      or a complete error message
+            resource_id: ID of the missing resource (optional)
         """
-        self.resource_type = resource_type
-        self.resource_id = resource_id
-        super().__init__(
-            f"{resource_type} with ID '{resource_id}' not found or "
-            f"you don't have permission to access it."
-        )
+        if resource_id is not None:
+            # Called with (resource_type, resource_id)
+            self.resource_type = resource_type_or_message
+            self.resource_id = resource_id
+            message = (
+                f"{resource_type_or_message} with ID '{resource_id}' not found or "
+                f"you don't have permission to access it."
+            )
+        else:
+            # Called with just a message string
+            self.resource_type = None
+            self.resource_id = None
+            message = resource_type_or_message
+        
+        super().__init__(message)
 
 
 class UnauthorizedError(ServiceError):
@@ -122,4 +136,26 @@ class ConflictError(ServiceError):
             conflicting_field: Field that caused the conflict
         """
         self.conflicting_field = conflicting_field
+        super().__init__(message)
+
+
+class ValidationError(ServiceError):
+    """
+    Input validation failed at service layer.
+    
+    Raised when business logic validation fails, such as
+    invalid settings values or constraint violations.
+    """
+    
+    def __init__(self, message: str, field: Optional[str] = None, details: Optional[Dict[str, Any]] = None):
+        """
+        Initialize validation error.
+        
+        Args:
+            message: Human-readable error description
+            field: Field that failed validation (optional)
+            details: Additional error details (optional)
+        """
+        self.field = field
+        self.details = details or {}
         super().__init__(message)

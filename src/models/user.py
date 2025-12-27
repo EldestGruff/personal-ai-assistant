@@ -1,18 +1,20 @@
 """
 User models for the Personal AI Assistant.
 
-Defines user accounts, preferences, and authentication. Currently supports
-single-user MVP with future extensibility for multi-user scenarios.
+Defines user accounts, preferences, and authentication. Supports
+multi-user architecture with RBAC foundation (Phase 3B).
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import Field, field_validator
 from sqlalchemy import Column, String, JSON, Boolean
+from sqlalchemy.orm import relationship
 
-from .base import BaseTimestampModel, BaseRequestModel, BaseDBModel
+from .base import BaseTimestampModel, BaseRequestModel, BaseDBModel, TZDateTime
+from .enums import UserRole
 
 
 class UserCreate(BaseRequestModel):
@@ -117,14 +119,22 @@ class UserResponse(BaseTimestampModel):
         default=True,
         description="Whether user account is active"
     )
+    role: UserRole = Field(
+        default=UserRole.USER,
+        description="User's role for RBAC"
+    )
+    last_login_at: Optional[datetime] = Field(
+        default=None,
+        description="Last login timestamp"
+    )
 
 
 class UserDB(BaseDBModel):
     """
     SQLAlchemy ORM model for users table.
     
-    Stores user accounts and preferences. Foundation for multi-user
-    support in future phases.
+    Stores user accounts and preferences. Multi-user architecture
+    with RBAC foundation (Phase 3B).
     """
     
     __tablename__ = "users"
@@ -134,12 +144,30 @@ class UserDB(BaseDBModel):
     preferences = Column(JSON, nullable=True, default=dict)
     is_active = Column(Boolean, nullable=False, default=True)
     
+    # RBAC fields (Phase 3B)
+    role = Column(String(20), nullable=False, default='user')
+    last_login_at = Column(TZDateTime, nullable=True)
+    
+    # Relationships
+    settings = relationship(
+        "UserSettingsDB",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    scheduled_analyses = relationship(
+        "ScheduledAnalysisDB",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
     def __repr__(self) -> str:
         """String representation for debugging."""
         return (
             f"<UserDB(id={self.id}, "
             f"name='{self.name}', "
             f"email='{self.email}', "
+            f"role='{self.role}', "
             f"is_active={self.is_active})>"
         )
     
@@ -151,6 +179,8 @@ class UserDB(BaseDBModel):
             email=self.email,
             preferences=self.preferences or {},
             is_active=self.is_active,
+            role=UserRole(self.role),
+            last_login_at=self.last_login_at,
             created_at=self.created_at,
             updated_at=self.updated_at
         )

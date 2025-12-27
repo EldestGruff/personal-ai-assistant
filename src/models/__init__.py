@@ -28,7 +28,15 @@ from .enums import (
     TimeOfDay,
     EnergyLevel,
     FocusState,
-    AnalysisType
+    AnalysisType,
+    # Phase 3B RBAC enums
+    UserRole,
+    Permission,
+    ROLE_PERMISSIONS,
+    # Phase 3B Settings enums
+    SettingsDepthType,
+    TaskSuggestionMode,
+    ScheduledAnalysisStatus,
 )
 
 
@@ -70,6 +78,23 @@ from .analysis import (
     ClaudeAnalysisDB
 )
 
+# Phase 3B: Settings models
+from .settings import (
+    UserSettingsCreate,
+    UserSettingsUpdate,
+    UserSettingsResponse,
+    AnalysisDepthConfig,
+    UserSettingsDB,
+)
+
+# Phase 3B: Scheduled analysis models
+from .scheduled_analysis import (
+    ScheduledAnalysisCreate,
+    ScheduledAnalysisResponse,
+    ScheduledAnalysisHistoryResponse,
+    ScheduledAnalysisDB,
+)
+
 
 # Export all models for clean imports
 __all__ = [
@@ -88,6 +113,14 @@ __all__ = [
     "EnergyLevel",
     "FocusState",
     "AnalysisType",
+    # Phase 3B RBAC enums
+    "UserRole",
+    "Permission",
+    "ROLE_PERMISSIONS",
+    # Phase 3B Settings enums
+    "SettingsDepthType",
+    "TaskSuggestionMode",
+    "ScheduledAnalysisStatus",
     # User models
     "UserCreate",
     "UserUpdate",
@@ -111,4 +144,15 @@ __all__ = [
     "ClaudeAnalysisCreate",
     "ClaudeAnalysisResponse",
     "ClaudeAnalysisDB",
+    # Phase 3B: Settings models
+    "UserSettingsCreate",
+    "UserSettingsUpdate",
+    "UserSettingsResponse",
+    "AnalysisDepthConfig",
+    "UserSettingsDB",
+    # Phase 3B: Scheduled analysis models
+    "ScheduledAnalysisCreate",
+    "ScheduledAnalysisResponse",
+    "ScheduledAnalysisHistoryResponse",
+    "ScheduledAnalysisDB",
 ]
