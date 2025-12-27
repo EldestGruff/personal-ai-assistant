@@ -61,12 +61,33 @@ async def analyze_thought_background(
     try:
         # Get a fresh db session for background task
         from ...database.session import get_db_context
+        from ...services.settings_service import SettingsService
+        from ...services.user_profile_service import UserProfileService
+        from ...services.task_suggestion_service import TaskSuggestionService
         
         with get_db_context() as db:
-            intelligence_service = ThoughtIntelligenceService(db, orchestrator)
+            # Get the thought from DB
+            thought = db.query(ThoughtDB).filter(ThoughtDB.id == str(thought_id)).first()
+            if not thought:
+                logger.warning(f"Thought {thought_id} not found for analysis")
+                return
+            
+            # Initialize all required services
+            settings_service = SettingsService(db)
+            profile_service = UserProfileService(db)
+            task_suggestion_service = TaskSuggestionService(db)
+            
+            intelligence_service = ThoughtIntelligenceService(
+                db=db,
+                ai_orchestrator=orchestrator,
+                settings_service=settings_service,
+                user_profile_service=profile_service,
+                task_suggestion_service=task_suggestion_service
+            )
+            
             result = await intelligence_service.analyze_thought_on_capture(
-                thought_id=thought_id,
-                user_id=user_id
+                user_id=user_id,
+                thought=thought
             )
             
             if result:
@@ -81,7 +102,7 @@ async def analyze_thought_background(
                 
     except Exception as e:
         # Don't let analysis failures affect the captured thought
-        logger.error(f"Background analysis failed for thought {thought_id}: {e}")
+        logger.error(f"Background analysis failed for thought {thought_id}: {e}", exc_info=True)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
