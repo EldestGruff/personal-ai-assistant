@@ -45,7 +45,7 @@ def upgrade() -> None:
         sa.Column('created_task_id', sa.String(36), sa.ForeignKey('tasks.id', ondelete='SET NULL'), nullable=True),
         
         # Soft delete (preserve ADHD change-of-mind history)
-        sa.Column('is_deleted', sa.Boolean, nullable=False, server_default='0'),
+        sa.Column('is_deleted', sa.Boolean, nullable=False, server_default='false'),
         sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('deletion_reason', sa.String(100), nullable=True),
         
@@ -78,7 +78,7 @@ def upgrade() -> None:
         """
         CREATE INDEX idx_task_suggestions_user_pending 
         ON task_suggestions(user_id) 
-        WHERE status = 'pending' AND is_deleted = 0
+        WHERE status = 'pending' AND is_deleted = false
         """
     )
 
