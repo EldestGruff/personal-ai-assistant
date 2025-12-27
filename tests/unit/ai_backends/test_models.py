@@ -94,12 +94,12 @@ class TestBackendRequest:
             )
     
     def test_timeout_too_high(self):
-        """timeout >60 rejected"""
+        """timeout >300 rejected"""
         with pytest.raises(ValidationError):
             BackendRequest(
                 request_id="req-mno",
                 thought_content="test",
-                timeout_seconds=120
+                timeout_seconds=301
             )
     
     def test_invalid_model_hint(self):

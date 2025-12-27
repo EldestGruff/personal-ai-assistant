@@ -181,10 +181,10 @@ class TestBackendConfigHelpers:
         assert config.get_timeout_for_backend("claude") == 30
     
     def test_get_timeout_for_ollama(self):
-        """Ollama timeout is 60s (large models)"""
+        """Ollama timeout is 120s (large models)"""
         config = BackendConfig()
         
-        assert config.get_timeout_for_backend("ollama") == 60
+        assert config.get_timeout_for_backend("ollama") == 120
     
     def test_get_timeout_for_mock(self):
         """Mock timeout is 5s (instant)"""
