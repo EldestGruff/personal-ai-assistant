@@ -28,7 +28,8 @@ from .routes import (
     settings_router,
     scheduled_analyses_router,
     profile_router,
-    task_suggestions_router
+    task_suggestions_router,
+    schedule_management_router
 )
 from ..services.exceptions import ServiceError
 
@@ -122,6 +123,7 @@ app.include_router(settings_router, prefix="/api/v1")
 app.include_router(scheduled_analyses_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(task_suggestions_router, prefix="/api/v1")
+app.include_router(schedule_management_router, prefix="/api/v1")
 
 # Mount static files for web dashboard
 # Look for web directory relative to this file

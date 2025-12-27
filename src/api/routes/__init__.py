@@ -13,6 +13,7 @@ from .settings import router as settings_router
 from .scheduled_analyses import router as scheduled_analyses_router
 from .profile import router as profile_router
 from .task_suggestions import router as task_suggestions_router
+from .schedule_management import router as schedule_management_router
 
 __all__ = [
     "health_router",
@@ -24,4 +25,5 @@ __all__ = [
     "scheduled_analyses_router",
     "profile_router",
     "task_suggestions_router",
+    "schedule_management_router",
 ]
