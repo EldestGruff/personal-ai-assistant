@@ -110,7 +110,8 @@ class ThoughtIntelligenceService:
             ThoughtAnalysisResult with structured analysis, or None if disabled
         """
         # Check if auto-analysis is enabled
-        settings = await self.settings_service.get_user_settings(user_id)
+        user_id_str = str(user_id)
+        settings = self.settings_service.get_user_settings(user_id_str)
         
         if not settings.auto_tagging_enabled and not settings.auto_task_creation_enabled:
             logger.debug(f"Auto-analysis disabled for user {user_id}")
@@ -118,7 +119,7 @@ class ThoughtIntelligenceService:
         
         try:
             # Load user profile for context
-            profile = await self.user_profile_service.get_profile(user_id)
+            profile = self.user_profile_service.get_profile(user_id_str)
             
             # Get recent thoughts for context
             recent_thoughts = await self._get_recent_thoughts(user_id, limit=5)
