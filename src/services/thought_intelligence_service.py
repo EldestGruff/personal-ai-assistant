@@ -119,7 +119,7 @@ class ThoughtIntelligenceService:
         
         try:
             # Load user profile for context
-            profile = self.user_profile_service.get_profile(user_id_str)
+            profile = await self.user_profile_service.get_profile(user_id)
             
             # Get recent thoughts for context
             recent_thoughts = await self._get_recent_thoughts(user_id, limit=5)
