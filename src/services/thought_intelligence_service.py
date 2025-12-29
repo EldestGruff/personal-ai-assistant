@@ -184,35 +184,38 @@ class ThoughtIntelligenceService:
         request_id: str
     ) -> Optional[str]:
         """
-        Call AI backend for analysis.
+        Call AI backend for thought analysis.
         
-        Uses the orchestrator which handles backend selection and fallback.
+        Uses Claude API directly for custom thought analysis prompts.
+        Returns raw JSON string for parsing.
         """
         try:
-            # Import here to avoid circular imports
-            from src.services.ai_backends.models import BackendRequest
+            # Use Claude directly for thought analysis
+            from src.services.claude_service import ClaudeService
+            import os
             
-            request = BackendRequest(
-                request_id=request_id,
-                thought_content=prompt,  # Using prompt as content
-                context={
-                    "user_id": str(user_id),
-                    "analysis_type": "thought_capture"
-                },
-                timeout_seconds=30,
-                model_hint="fast"  # Use fast model for capture-time analysis
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                logger.warning("No ANTHROPIC_API_KEY - cannot run thought analysis")
+                return None
+            
+            claude = ClaudeService(api_key=api_key)
+            
+            system_prompt = """You are analyzing a thought for the Personal AI Assistant.
+Respond ONLY with valid JSON, no other text."""
+            
+            response = claude._call_claude(
+                system_prompt=system_prompt,
+                user_message=prompt,
+                temperature=0.7
             )
             
-            response = await self.ai_orchestrator.analyze(request)
-            
-            if response.success:
-                return response.analysis.summary
-            else:
-                logger.warning(f"AI backend error: {response.error.error_message}")
-                return None
+            if response and response.get("content"):
+                return response["content"]
+            return None
                 
         except Exception as e:
-            logger.error(f"Error calling AI backend: {e}")
+            logger.error(f"Error calling AI backend: {e}", exc_info=True)
             return None
     
     async def _update_thought_with_analysis(
