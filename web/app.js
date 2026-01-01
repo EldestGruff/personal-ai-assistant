@@ -1,10 +1,12 @@
 // Personal AI Assistant - Dashboard Application
 // Vanilla JavaScript implementation
+// Phase 3B Spec 2: Enhanced with AI Intelligence UI
 
 // State Management
 const state = {
     thoughts: [],
     tasks: [],
+    taskSuggestions: [],
     currentView: 'dashboard',
     filters: {
         thoughtSearch: '',
@@ -155,6 +157,64 @@ const api = {
         await this.request(`/thoughts/${thoughtId}`, {
             method: 'DELETE'
         });
+    },
+
+    // =========================================================================
+    // Task Suggestion API Methods (Phase 3B Spec 2)
+    // =========================================================================
+
+    async getPendingTaskSuggestions(minConfidence = 0.0) {
+        const response = await this.request(`/task-suggestions/pending?min_confidence=${minConfidence}`);
+        return response.suggestions || [];
+    },
+
+    async acceptTaskSuggestion(suggestionId, modifications = null) {
+        const body = modifications ? JSON.stringify(modifications) : null;
+        const response = await this.request(`/task-suggestions/${suggestionId}/accept`, {
+            method: 'POST',
+            body: body
+        });
+        return response;
+    },
+
+    async rejectTaskSuggestion(suggestionId, reason = null) {
+        const response = await this.request(`/task-suggestions/${suggestionId}/reject`, {
+            method: 'POST',
+            body: reason ? JSON.stringify({ reason }) : null
+        });
+        return response;
+    },
+
+    async deleteTaskSuggestion(suggestionId, reason = 'user_deleted') {
+        const response = await this.request(`/task-suggestions/${suggestionId}?reason=${encodeURIComponent(reason)}`, {
+            method: 'DELETE'
+        });
+        return response;
+    },
+
+    async restoreTaskSuggestion(suggestionId) {
+        const response = await this.request(`/task-suggestions/${suggestionId}/restore`, {
+            method: 'POST'
+        });
+        return response;
+    },
+
+    async getTaskSuggestionHistory(includeDeleted = false, limit = 50) {
+        const response = await this.request(`/task-suggestions/history?include_deleted=${includeDeleted}&limit=${limit}`);
+        return response.suggestions || [];
+    },
+
+    // =========================================================================
+    // Tag Application API Methods (Phase 3B Spec 2)
+    // =========================================================================
+
+    async applyTagsToThought(thoughtId, tags) {
+        // Use the existing update endpoint to apply tags
+        const response = await this.request(`/thoughts/${thoughtId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ tags })
+        });
+        return response;
     }
 };
 
@@ -231,6 +291,10 @@ const utils = {
     getDayOfWeek(dateString) {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { weekday: 'short' });
+    },
+
+    formatConfidence(confidence) {
+        return Math.round((confidence || 0) * 100) + '%';
     }
 };
 
@@ -241,6 +305,7 @@ const ui = {
         this.renderQuickCapture();
         this.renderQuickStats();
         this.renderClaudeInsights();
+        this.renderTaskSuggestions();
         this.renderRecentThoughts();
         this.renderTopTags();
         this.renderActiveTasks();
@@ -377,7 +442,8 @@ const ui = {
                 selectedTags = [];
                 this.updateSelectedTags(selectedTags, selectedTagsContainer);
                 
-                // Refresh dashboard
+                // Refresh dashboard (also loads new task suggestions if any)
+                await loadTaskSuggestions();
                 this.renderDashboard();
                 ui.updateHeaderStats();
                 ui.populateTagFilter();
@@ -421,11 +487,235 @@ const ui = {
     renderQuickStats() {
         const todayCount = state.thoughts.filter(t => utils.isToday(t.created_at)).length;
         const weekCount = state.thoughts.filter(t => utils.isThisWeek(t.created_at)).length;
+        const pendingSuggestions = state.taskSuggestions.length;
 
         document.getElementById('dash-total-thoughts').textContent = state.thoughts.length;
         document.getElementById('dash-total-tasks').textContent = state.tasks.length;
         document.getElementById('dash-today-thoughts').textContent = todayCount;
         document.getElementById('dash-week-thoughts').textContent = weekCount;
+        
+        // Update pending suggestions count if element exists
+        const pendingEl = document.getElementById('dash-pending-suggestions');
+        if (pendingEl) {
+            pendingEl.textContent = pendingSuggestions;
+        }
+    },
+
+    // =========================================================================
+    // Task Suggestions UI (Phase 3B Spec 2)
+    // =========================================================================
+
+    renderTaskSuggestions() {
+        const container = document.getElementById('task-suggestions-container');
+        if (!container) return;
+
+        if (state.taskSuggestions.length === 0) {
+            container.innerHTML = `
+                <div class="card task-suggestions-card">
+                    <div class="card-header">
+                        <h2>🎯 Task Suggestions</h2>
+                        <button class="btn-icon" onclick="loadTaskSuggestions()" title="Refresh suggestions">↻</button>
+                    </div>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✨</div>
+                        <div class="empty-state-text">No pending suggestions</div>
+                        <div class="empty-state-hint">AI will suggest tasks when it detects actionable items</div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="card task-suggestions-card">
+                <div class="card-header">
+                    <h2>🎯 Task Suggestions <span class="suggestion-count">${state.taskSuggestions.length}</span></h2>
+                    <button class="btn-icon" onclick="loadTaskSuggestions()" title="Refresh suggestions">↻</button>
+                </div>
+                <div class="task-suggestions-list">
+                    ${state.taskSuggestions.map(suggestion => this.renderTaskSuggestionCard(suggestion)).join('')}
+                </div>
+            </div>
+        `;
+
+        this.attachTaskSuggestionHandlers();
+    },
+
+    renderTaskSuggestionCard(suggestion) {
+        const confidenceClass = suggestion.confidence >= 0.8 ? 'high' : 
+                               suggestion.confidence >= 0.6 ? 'medium' : 'low';
+        
+        return `
+            <div class="task-suggestion" data-suggestion-id="${suggestion.id}">
+                <div class="suggestion-header">
+                    <span class="suggestion-title">${this.escapeHtml(suggestion.title)}</span>
+                    <span class="confidence-badge ${confidenceClass}">${utils.formatConfidence(suggestion.confidence)}</span>
+                </div>
+                ${suggestion.description ? `
+                    <p class="suggestion-description">${this.escapeHtml(suggestion.description)}</p>
+                ` : ''}
+                <div class="suggestion-meta">
+                    <span class="priority-badge ${suggestion.priority}">${suggestion.priority}</span>
+                    ${suggestion.estimated_effort_minutes ? `
+                        <span class="effort-badge">⏱️ ${suggestion.estimated_effort_minutes}min</span>
+                    ` : ''}
+                    <span class="suggestion-time">${utils.timeAgo(suggestion.created_at)}</span>
+                </div>
+                ${suggestion.reasoning ? `
+                    <div class="suggestion-reasoning">
+                        <small>💡 ${this.escapeHtml(suggestion.reasoning)}</small>
+                    </div>
+                ` : ''}
+                <div class="suggestion-actions">
+                    <button class="btn-accept" data-action="accept">✓ Create Task</button>
+                    <button class="btn-modify" data-action="modify">✏️ Modify</button>
+                    <button class="btn-reject" data-action="reject">✗ Dismiss</button>
+                </div>
+            </div>
+        `;
+    },
+
+    attachTaskSuggestionHandlers() {
+        document.querySelectorAll('.task-suggestion').forEach(card => {
+            const suggestionId = card.dataset.suggestionId;
+            
+            card.querySelector('[data-action="accept"]')?.addEventListener('click', async () => {
+                await this.handleAcceptSuggestion(suggestionId);
+            });
+            
+            card.querySelector('[data-action="reject"]')?.addEventListener('click', async () => {
+                await this.handleRejectSuggestion(suggestionId);
+            });
+            
+            card.querySelector('[data-action="modify"]')?.addEventListener('click', () => {
+                this.handleModifySuggestion(suggestionId);
+            });
+        });
+    },
+
+    async handleAcceptSuggestion(suggestionId) {
+        try {
+            showLoading();
+            const result = await api.acceptTaskSuggestion(suggestionId);
+            
+            // Update local state
+            state.taskSuggestions = state.taskSuggestions.filter(s => s.id !== suggestionId);
+            if (result.task) {
+                state.tasks.unshift(result.task);
+            }
+            
+            // Re-render
+            this.renderTaskSuggestions();
+            this.renderActiveTasks();
+            ui.updateHeaderStats();
+            
+            showSuccess('Task created from suggestion!');
+        } catch (error) {
+            console.error('Failed to accept suggestion:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    async handleRejectSuggestion(suggestionId) {
+        try {
+            showLoading();
+            await api.rejectTaskSuggestion(suggestionId);
+            
+            // Update local state
+            state.taskSuggestions = state.taskSuggestions.filter(s => s.id !== suggestionId);
+            
+            // Re-render
+            this.renderTaskSuggestions();
+            
+            showSuccess('Suggestion dismissed');
+        } catch (error) {
+            console.error('Failed to reject suggestion:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    handleModifySuggestion(suggestionId) {
+        const suggestion = state.taskSuggestions.find(s => s.id === suggestionId);
+        if (!suggestion) return;
+
+        // Show modification modal
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal modify-suggestion-modal">
+                <div class="modal-header">
+                    <h3>✏️ Modify Task Suggestion</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <form id="modify-suggestion-form">
+                    <div class="form-group">
+                        <label for="mod-title">Title</label>
+                        <input type="text" id="mod-title" value="${this.escapeHtml(suggestion.title)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mod-description">Description</label>
+                        <textarea id="mod-description" rows="3">${this.escapeHtml(suggestion.description || '')}</textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mod-priority">Priority</label>
+                            <select id="mod-priority">
+                                <option value="low" ${suggestion.priority === 'low' ? 'selected' : ''}>Low</option>
+                                <option value="medium" ${suggestion.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                                <option value="high" ${suggestion.priority === 'high' ? 'selected' : ''}>High</option>
+                                <option value="critical" ${suggestion.priority === 'critical' ? 'selected' : ''}>Critical</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="mod-effort">Estimated Minutes</label>
+                            <input type="number" id="mod-effort" value="${suggestion.estimated_effort_minutes || ''}" min="1">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-primary">✓ Create Modified Task</button>
+                        <button type="button" class="btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        modal.querySelector('#modify-suggestion-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const modifications = {
+                title: modal.querySelector('#mod-title').value.trim(),
+                description: modal.querySelector('#mod-description').value.trim() || null,
+                priority: modal.querySelector('#mod-priority').value,
+                estimated_effort_minutes: parseInt(modal.querySelector('#mod-effort').value) || null
+            };
+
+            try {
+                showLoading();
+                const result = await api.acceptTaskSuggestion(suggestionId, modifications);
+                
+                // Update local state
+                state.taskSuggestions = state.taskSuggestions.filter(s => s.id !== suggestionId);
+                if (result.task) {
+                    state.tasks.unshift(result.task);
+                }
+                
+                modal.remove();
+                this.renderTaskSuggestions();
+                this.renderActiveTasks();
+                ui.updateHeaderStats();
+                
+                showSuccess('Task created with modifications!');
+            } catch (error) {
+                console.error('Failed to create modified task:', error);
+            } finally {
+                hideLoading();
+            }
+        });
     },
 
     async renderClaudeInsights(forceRefresh = false) {
@@ -603,19 +893,47 @@ const ui = {
         this.attachThoughtHandlers();
     },
 
+    // =========================================================================
+    // Enhanced Thought Item with Suggested Tags (Phase 3B Spec 2)
+    // =========================================================================
+
     renderThoughtItem(thought, showActions = true) {
+        const hasSuggestedTags = thought.suggested_tags && thought.suggested_tags.length > 0;
+        const appliedTags = thought.tags || [];
+        
+        // Filter out suggested tags that are already applied
+        const pendingSuggestedTags = hasSuggestedTags 
+            ? thought.suggested_tags.filter(st => !appliedTags.includes(st.tag))
+            : [];
+
         return `
             <div class="thought-item" data-thought-id="${thought.id}">
                 <div class="thought-view">
                     <div class="thought-content">${this.escapeHtml(thought.content)}</div>
                     <div class="thought-meta">
                         <span class="thought-time">${utils.timeAgo(thought.created_at)}</span>
-                        ${thought.tags && thought.tags.length > 0 ? `
+                        ${appliedTags.length > 0 ? `
                             <div class="thought-tags">
-                                ${thought.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                ${appliedTags.map(tag => `<span class="tag applied-tag">${tag}</span>`).join('')}
                             </div>
                         ` : ''}
                     </div>
+                    
+                    ${pendingSuggestedTags.length > 0 ? `
+                        <div class="suggested-tags-section">
+                            <span class="suggested-tags-label">💡 Suggested tags:</span>
+                            <div class="suggested-tags-list">
+                                ${pendingSuggestedTags.map(st => `
+                                    <span class="suggested-tag" data-tag="${this.escapeHtml(st.tag)}" data-thought-id="${thought.id}">
+                                        ${this.escapeHtml(st.tag)} <small>(${utils.formatConfidence(st.confidence)})</small>
+                                        <button class="accept-tag" title="Accept this tag">✓</button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            <button class="accept-all-tags btn-small" data-thought-id="${thought.id}">Accept All</button>
+                        </div>
+                    ` : ''}
+                    
                     ${showActions ? `
                         <div class="thought-actions">
                             <button class="btn-icon edit-thought" title="Edit thought">✏️</button>
@@ -625,7 +943,7 @@ const ui = {
                 </div>
                 <div class="thought-edit" style="display: none;">
                     <textarea class="edit-content">${this.escapeHtml(thought.content)}</textarea>
-                    <input type="text" class="edit-tags" placeholder="Tags (comma-separated)" value="${(thought.tags || []).join(', ')}">
+                    <input type="text" class="edit-tags" placeholder="Tags (comma-separated)" value="${appliedTags.join(', ')}">
                     <div class="edit-actions">
                         <button class="btn-save">💾 Save</button>
                         <button class="btn-cancel">✕ Cancel</button>
@@ -716,6 +1034,89 @@ const ui = {
                 }
             });
         });
+
+        // =====================================================================
+        // Suggested Tag Handlers (Phase 3B Spec 2)
+        // =====================================================================
+
+        // Accept individual tag
+        document.querySelectorAll('.suggested-tag .accept-tag').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const tagSpan = e.target.closest('.suggested-tag');
+                const tag = tagSpan.dataset.tag;
+                const thoughtId = tagSpan.dataset.thoughtId;
+                
+                await this.acceptSuggestedTag(thoughtId, tag);
+            });
+        });
+
+        // Accept all tags
+        document.querySelectorAll('.accept-all-tags').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const thoughtId = btn.dataset.thoughtId;
+                await this.acceptAllSuggestedTags(thoughtId);
+            });
+        });
+    },
+
+    async acceptSuggestedTag(thoughtId, tagToAdd) {
+        const thought = state.thoughts.find(t => t.id === thoughtId);
+        if (!thought) return;
+
+        const currentTags = thought.tags || [];
+        if (currentTags.includes(tagToAdd)) return;
+
+        const newTags = [...currentTags, tagToAdd];
+
+        try {
+            showLoading();
+            const updated = await api.applyTagsToThought(thoughtId, newTags);
+            
+            // Update local state
+            const index = state.thoughts.findIndex(t => t.id === thoughtId);
+            if (index !== -1) {
+                state.thoughts[index] = { ...state.thoughts[index], ...updated };
+            }
+            
+            // Re-render current view
+            switchView(state.currentView);
+            showSuccess(`Tag "${tagToAdd}" added!`);
+        } catch (error) {
+            console.error('Failed to add tag:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    async acceptAllSuggestedTags(thoughtId) {
+        const thought = state.thoughts.find(t => t.id === thoughtId);
+        if (!thought || !thought.suggested_tags) return;
+
+        const currentTags = thought.tags || [];
+        const suggestedTagNames = thought.suggested_tags.map(st => st.tag);
+        
+        // Merge current and suggested (no duplicates)
+        const newTags = [...new Set([...currentTags, ...suggestedTagNames])];
+
+        try {
+            showLoading();
+            const updated = await api.applyTagsToThought(thoughtId, newTags);
+            
+            // Update local state
+            const index = state.thoughts.findIndex(t => t.id === thoughtId);
+            if (index !== -1) {
+                state.thoughts[index] = { ...state.thoughts[index], ...updated };
+            }
+            
+            // Re-render current view
+            switchView(state.currentView);
+            showSuccess('All suggested tags applied!');
+        } catch (error) {
+            console.error('Failed to apply tags:', error);
+        } finally {
+            hideLoading();
+        }
     },
 
     renderTopTags() {
@@ -1141,11 +1542,33 @@ function hideLoading() {
 function showError(message) {
     const toast = document.getElementById('error-toast');
     toast.textContent = message;
+    toast.className = 'toast error';
     toast.classList.remove('hidden');
 
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 5000);
+}
+
+function showSuccess(message) {
+    const toast = document.getElementById('error-toast');
+    toast.textContent = message;
+    toast.className = 'toast success';
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+// Task Suggestions Loading
+async function loadTaskSuggestions() {
+    try {
+        state.taskSuggestions = await api.getPendingTaskSuggestions();
+    } catch (error) {
+        console.error('Failed to load task suggestions:', error);
+        state.taskSuggestions = [];
+    }
 }
 
 // Data Loading
@@ -1160,6 +1583,9 @@ async function loadData() {
 
         state.thoughts = thoughts;
         state.tasks = tasks;
+
+        // Also load task suggestions
+        await loadTaskSuggestions();
 
         ui.updateHeaderStats();
         ui.populateTagFilter();

@@ -15,6 +15,7 @@
                 <span id="total-thoughts" class="stat">0 thoughts</span>
                 <span id="total-tasks" class="stat">0 tasks</span>
                 <button id="refresh-btn" class="btn-refresh">↻ Refresh</button>
+                <a href="admin.html" class="btn-settings" title="Settings">⚙️ Settings</a>
             </div>
         </header>
 
@@ -44,6 +45,11 @@
                             <span>Analyzing your recent thoughts...</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Task Suggestions (Phase 3B Spec 2) -->
+                <div id="task-suggestions-container" class="task-suggestions-container">
+                    <!-- Rendered by JavaScript -->
                 </div>
 
                 <!-- Quick Stats -->
@@ -169,10 +175,13 @@
         <p>Loading...</p>
     </div>
 
-    <!-- Error Toast -->
-    <div id="error-toast" class="toast hidden"></div>
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container">
+        <div id="error-toast" class="toast toast-error hidden"></div>
+        <div id="success-toast" class="toast toast-success hidden"></div>
+    </div>
 
     <script src="config.js?v=2"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
