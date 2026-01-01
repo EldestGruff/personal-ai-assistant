@@ -100,7 +100,7 @@ class TaskSuggestionResponse(BaseTimestampModel):
     """
     
     user_id: UUID = Field(..., description="Owner of this suggestion")
-    source_thought_id: UUID = Field(..., description="Thought that spawned this")
+    source_thought_id: Optional[UUID] = Field(default=None, description="Thought that spawned this (optional for consciousness check generated suggestions)")
     
     # Suggested task details
     title: str = Field(..., description="Suggested task title")
