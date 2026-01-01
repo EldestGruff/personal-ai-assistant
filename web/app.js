@@ -38,6 +38,11 @@ const api = {
                 throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
             }
 
+            // Handle 204 No Content (empty response)
+            if (response.status === 204) {
+                return null;
+            }
+
             const result = await response.json();
 
             // FastAPI returns { success: true, data: {...} }
