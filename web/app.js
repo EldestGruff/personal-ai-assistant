@@ -159,6 +159,20 @@ const api = {
         });
     },
 
+    async updateTask(taskId, updates) {
+        const response = await this.request(`/tasks/${taskId}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates)
+        });
+        return response;
+    },
+
+    async deleteTask(taskId) {
+        await this.request(`/tasks/${taskId}`, {
+            method: 'DELETE'
+        });
+    },
+
     // =========================================================================
     // Task Suggestion API Methods (Phase 3B Spec 2)
     // =========================================================================
@@ -631,6 +645,7 @@ const ui = {
             showSuccess('Suggestion dismissed');
         } catch (error) {
             console.error('Failed to reject suggestion:', error);
+            showError('Failed to dismiss suggestion');
         } finally {
             hideLoading();
         }
@@ -927,10 +942,14 @@ const ui = {
                                     <span class="suggested-tag" data-tag="${this.escapeHtml(st.tag)}" data-thought-id="${thought.id}">
                                         ${this.escapeHtml(st.tag)} <small>(${utils.formatConfidence(st.confidence)})</small>
                                         <button class="accept-tag" title="Accept this tag">✓</button>
+                                        <button class="decline-tag" title="Dismiss this tag">✕</button>
                                     </span>
                                 `).join('')}
                             </div>
-                            <button class="accept-all-tags btn-small" data-thought-id="${thought.id}">Accept All</button>
+                            <div class="suggested-tags-actions">
+                                <button class="accept-all-tags btn-small" data-thought-id="${thought.id}">Accept All</button>
+                                <button class="dismiss-all-tags btn-small" data-thought-id="${thought.id}">Dismiss All</button>
+                            </div>
                         </div>
                     ` : ''}
                     
@@ -1051,11 +1070,31 @@ const ui = {
             });
         });
 
+        // Decline individual tag
+        document.querySelectorAll('.suggested-tag .decline-tag').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const tagSpan = e.target.closest('.suggested-tag');
+                const tag = tagSpan.dataset.tag;
+                const thoughtId = tagSpan.dataset.thoughtId;
+                
+                await this.declineSuggestedTag(thoughtId, tag);
+            });
+        });
+
         // Accept all tags
         document.querySelectorAll('.accept-all-tags').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const thoughtId = btn.dataset.thoughtId;
                 await this.acceptAllSuggestedTags(thoughtId);
+            });
+        });
+
+        // Dismiss all tags
+        document.querySelectorAll('.dismiss-all-tags').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const thoughtId = btn.dataset.thoughtId;
+                await this.dismissAllSuggestedTags(thoughtId);
             });
         });
     },
@@ -1119,6 +1158,37 @@ const ui = {
         }
     },
 
+    async declineSuggestedTag(thoughtId, tagToRemove) {
+        const thought = state.thoughts.find(t => t.id === thoughtId);
+        if (!thought || !thought.suggested_tags) return;
+
+        // Update local state - remove this suggested tag
+        const index = state.thoughts.findIndex(t => t.id === thoughtId);
+        if (index !== -1) {
+            state.thoughts[index].suggested_tags = state.thoughts[index].suggested_tags.filter(
+                st => st.tag !== tagToRemove
+            );
+        }
+
+        // Re-render current view
+        switchView(state.currentView);
+    },
+
+    async dismissAllSuggestedTags(thoughtId) {
+        const thought = state.thoughts.find(t => t.id === thoughtId);
+        if (!thought || !thought.suggested_tags) return;
+
+        // Update local state - clear all suggested tags
+        const index = state.thoughts.findIndex(t => t.id === thoughtId);
+        if (index !== -1) {
+            state.thoughts[index].suggested_tags = [];
+        }
+
+        // Re-render current view
+        switchView(state.currentView);
+        showSuccess('All tag suggestions dismissed');
+    },
+
     renderTopTags() {
         const container = document.getElementById('dash-top-tags');
         const tagCounts = {};
@@ -1158,6 +1228,174 @@ const ui = {
         }
 
         container.innerHTML = active.map(task => this.renderTaskItem(task)).join('');
+        this.attachTaskHandlers();
+    },
+
+    attachTaskHandlers() {
+        // Complete task button
+        document.querySelectorAll('.complete-task').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const taskItem = e.target.closest('.task-item');
+                const taskId = taskItem.dataset.taskId;
+                await this.completeTask(taskId);
+            });
+        });
+
+        // Uncomplete task button
+        document.querySelectorAll('.uncomplete-task').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const taskItem = e.target.closest('.task-item');
+                const taskId = taskItem.dataset.taskId;
+                await this.uncompleteTask(taskId);
+            });
+        });
+
+        // Edit task button
+        document.querySelectorAll('.edit-task').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const taskItem = e.target.closest('.task-item');
+                taskItem.querySelector('.task-view').style.display = 'none';
+                taskItem.querySelector('.task-edit').style.display = 'block';
+                taskItem.querySelector('.edit-task-title').focus();
+            });
+        });
+
+        // Cancel edit button
+        document.querySelectorAll('.btn-cancel-task').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const taskItem = e.target.closest('.task-item');
+                taskItem.querySelector('.task-view').style.display = 'block';
+                taskItem.querySelector('.task-edit').style.display = 'none';
+            });
+        });
+
+        // Save task button
+        document.querySelectorAll('.btn-save-task').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const taskItem = e.target.closest('.task-item');
+                const taskId = taskItem.dataset.taskId;
+                
+                const title = taskItem.querySelector('.edit-task-title').value.trim();
+                const description = taskItem.querySelector('.edit-task-description').value.trim();
+                const priority = taskItem.querySelector('.edit-task-priority').value;
+                const effortStr = taskItem.querySelector('.edit-task-effort').value;
+                const dueDate = taskItem.querySelector('.edit-task-due').value;
+
+                if (!title) {
+                    showError('Task title cannot be empty');
+                    return;
+                }
+
+                const updates = {
+                    title,
+                    description: description || null,
+                    priority,
+                    estimated_effort_minutes: effortStr ? parseInt(effortStr) : null,
+                    due_date: dueDate || null
+                };
+
+                await this.updateTask(taskId, updates);
+            });
+        });
+
+        // Delete task button
+        document.querySelectorAll('.delete-task').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const taskItem = e.target.closest('.task-item');
+                const taskId = taskItem.dataset.taskId;
+                const task = state.tasks.find(t => t.id === taskId);
+                
+                if (!confirm(`Delete task "${task?.title}"? This cannot be undone.`)) {
+                    return;
+                }
+
+                await this.deleteTask(taskId);
+            });
+        });
+    },
+
+    async completeTask(taskId) {
+        try {
+            showLoading();
+            const updated = await api.updateTask(taskId, { status: 'done' });
+            
+            // Update local state
+            const index = state.tasks.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                state.tasks[index] = { ...state.tasks[index], ...updated };
+            }
+            
+            // Re-render current view
+            switchView(state.currentView);
+            ui.updateHeaderStats();
+            showSuccess('Task completed! 🎉');
+        } catch (error) {
+            console.error('Failed to complete task:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    async uncompleteTask(taskId) {
+        try {
+            showLoading();
+            const updated = await api.updateTask(taskId, { status: 'pending' });
+            
+            // Update local state
+            const index = state.tasks.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                state.tasks[index] = { ...state.tasks[index], ...updated };
+            }
+            
+            // Re-render current view
+            switchView(state.currentView);
+            ui.updateHeaderStats();
+            showSuccess('Task reopened');
+        } catch (error) {
+            console.error('Failed to uncomplete task:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    async updateTask(taskId, updates) {
+        try {
+            showLoading();
+            const updated = await api.updateTask(taskId, updates);
+            
+            // Update local state
+            const index = state.tasks.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                state.tasks[index] = { ...state.tasks[index], ...updated };
+            }
+            
+            // Re-render current view
+            switchView(state.currentView);
+            showSuccess('Task updated!');
+        } catch (error) {
+            console.error('Failed to update task:', error);
+        } finally {
+            hideLoading();
+        }
+    },
+
+    async deleteTask(taskId) {
+        try {
+            showLoading();
+            await api.deleteTask(taskId);
+            
+            // Remove from local state
+            state.tasks = state.tasks.filter(t => t.id !== taskId);
+            
+            // Re-render
+            ui.updateHeaderStats();
+            switchView(state.currentView);
+            showSuccess('Task deleted');
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+        } finally {
+            hideLoading();
+        }
     },
 
     // Thoughts View
@@ -1219,18 +1457,54 @@ const ui = {
         }
 
         container.innerHTML = filtered.map(task => this.renderTaskItem(task)).join('');
+        this.attachTaskHandlers();
     },
 
     renderTaskItem(task) {
+        const isDone = task.status === 'done';
+        const canComplete = task.status === 'pending' || task.status === 'in_progress';
+        
         return `
-            <div class="task-item priority-${task.priority} status-${task.status}">
-                <div class="task-content">
-                    <div class="task-title">${this.escapeHtml(task.title)}</div>
-                    <div class="task-meta">
-                        <span class="task-badge priority">${task.priority}</span>
-                        <span class="task-badge status">${task.status.replace('_', ' ')}</span>
-                        ${task.due_date ? `<span>Due: ${utils.formatDate(task.due_date)}</span>` : ''}
-                        <span>${utils.timeAgo(task.created_at)}</span>
+            <div class="task-item priority-${task.priority} status-${task.status}" data-task-id="${task.id}">
+                <div class="task-view">
+                    <div class="task-content">
+                        <div class="task-title ${isDone ? 'completed' : ''}">${this.escapeHtml(task.title)}</div>
+                        ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
+                        <div class="task-meta">
+                            <span class="task-badge priority">${task.priority}</span>
+                            <span class="task-badge status">${task.status.replace('_', ' ')}</span>
+                            ${task.due_date ? `<span>Due: ${utils.formatDate(task.due_date)}</span>` : ''}
+                            ${task.estimated_effort_minutes ? `<span>⏱️ ${task.estimated_effort_minutes}min</span>` : ''}
+                            <span>${utils.timeAgo(task.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        ${canComplete ? `
+                            <button class="btn-icon complete-task" title="Mark as complete">✓</button>
+                        ` : ''}
+                        ${isDone ? `
+                            <button class="btn-icon uncomplete-task" title="Mark as incomplete">↶</button>
+                        ` : ''}
+                        <button class="btn-icon edit-task" title="Edit task">✏️</button>
+                        <button class="btn-icon delete-task" title="Delete task">🗑️</button>
+                    </div>
+                </div>
+                <div class="task-edit" style="display: none;">
+                    <input type="text" class="edit-task-title" value="${this.escapeHtml(task.title)}" placeholder="Task title">
+                    <textarea class="edit-task-description" placeholder="Description">${this.escapeHtml(task.description || '')}</textarea>
+                    <div class="edit-task-meta">
+                        <select class="edit-task-priority">
+                            <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+                            <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+                            <option value="critical" ${task.priority === 'critical' ? 'selected' : ''}>Critical</option>
+                        </select>
+                        <input type="number" class="edit-task-effort" value="${task.estimated_effort_minutes || ''}" placeholder="Minutes" min="1">
+                        <input type="date" class="edit-task-due" value="${task.due_date || ''}">
+                    </div>
+                    <div class="edit-actions">
+                        <button class="btn-save-task">💾 Save</button>
+                        <button class="btn-cancel-task">✕ Cancel</button>
                     </div>
                 </div>
             </div>
